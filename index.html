@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>巨型 AR 地毯踏踏樂 - 專業復康優化版</title>
+    <title>巨型 AR 8圓體感牆 - 快板視覺優化版</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.2.0/dist/tf-core.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.2.0/dist/tf-converter.min.js"></script>
@@ -11,25 +11,25 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
     <style>
-        * { box-sizing: border-box; user-select: none; }
+        * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         body {
-            margin: 0; padding: 0; background: #08090f; color: #fff;
+            background: #000; color: #fff;
             font-family: system-ui, -apple-system, sans-serif; overflow: hidden;
             height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
         }
 
-        /* 歡迎與授權 */
+        /* 未啟動遊戲：歡迎畫面 */
         #welcome-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, #151828 0%, #08090f 100%);
+            background: radial-gradient(circle at center, #111422 0%, #06070a 100%);
             z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
         }
         .start-btn {
-            background: linear-gradient(135deg, #00f0ff 0%, #7900ff 100%);
-            color: white; border: none; padding: 18px 50px; font-size: 1.3rem; font-weight: bold;
-            border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(0, 240, 255, 0.3); transition: all 0.3s ease;
+            background: linear-gradient(135deg, #00f0ff 0%, #ff007f 100%);
+            color: white; border: none; padding: 20px 60px; font-size: 1.5rem; font-weight: bold;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(0, 240, 255, 0.4); transition: all 0.3s ease;
         }
-        .start-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 240, 255, 0.6); }
+        .start-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(255, 0, 127, 0.7); }
 
         /* 遊戲核心版面 */
         #game-container { position: relative; width: 100%; height: 100%; display: none; }
@@ -37,57 +37,37 @@
         video { display: none; }
         canvas { height: 100%; width: 100%; object-fit: contain; transform: scaleX(-1); }
 
-        /* 大字體、高對比 HUD 抬頭顯示 */
+        /* 大字體得分 HUD (頂部只留得分，不放黑色大方塊擋鏡頭) */
         #hud-top {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(8, 9, 15, 0.9); border-radius: 20px; padding: 15px 40px;
-            border: 3px solid #00f0ff; text-align: center; z-index: 10; min-width: 320px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 240, 255, 0.15); border-radius: 15px; padding: 10px 25px;
+            border: 2px solid #00f0ff; text-align: center; z-index: 10;
+            backdrop-filter: blur(5px); pointer-events: none;
         }
-        #task-instruction { font-size: 1.8rem; font-weight: 900; color: #ffff00; margin: 0; letter-spacing: 1px; }
-        #score-text { font-size: 1.1rem; color: #a0a5c0; margin: 5px 0 0 0; }
-
-        /* 校正指引遮罩 */
-        #calibration-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 5; display: flex; flex-direction: column; justify-content: center; align-items: center;
-        }
-        #guide-msg {
-            background: rgba(255, 0, 127, 0.85); padding: 12px 30px; border-radius: 30px;
-            font-size: 1.3rem; font-weight: bold; color: white; margin-bottom: 20px;
-            transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-        }
-        .guide-box {
-            width: 55%; height: 75%; border: 4px dashed rgba(255, 0, 127, 0.6);
-            border-radius: 24px; transition: all 0.3s ease;
-        }
-        /* 校正成功時的樣式變換 */
-        .ready .guide-box { border-color: #00ff66; background: rgba(0, 255, 102, 0.03); }
-        .ready #guide-msg { background: rgba(0, 200, 80, 0.9); }
+        #score-text { font-size: 1.2rem; color: #fff; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="welcome-screen">
-        <h1 style="font-size: 2.5rem; color: #00f0ff; margin-bottom: 5px;">🎹 巨型 AR 地毯踏踏樂 (專業優化版)</h1>
-        <p style="color: #a0a5c0; font-size: 1.1rem; max-width: 500px; text-align: center; line-height: 1.6; margin-bottom: 30px;">
-            本版本優化了<b>「防長者雙腳連續誤觸機制」</b>，並新增了<b>「大腦認知任務模式」</b>與遠距離自動偵測校正框。
-        </p>
-        <button id="btn-start" class="start-btn">開始復康訓練</button>
-        <div id="status-text" style="margin-top: 15px; font-size: 0.9rem; color: #ff007f;">系統就緒。</div>
+        <h1 style="font-size: 2.8rem; color: #00f0ff; margin-bottom: 15px; text-shadow: 0 0 15px rgba(0,240,255,0.4);">🔮 8 圓全方位肢體體感牆</h1>
+        <p style="color: #ff007f; font-size: 1.3rem; font-weight: bold; margin-bottom: 10px;">—— 極速快板音樂 • 減法獨佔著燈版 ——</p>
+        
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 25px; max-width: 580px; margin-bottom: 35px; text-align: left; line-height: 1.6;">
+            <p style="color: #ffff00; font-weight: bold; font-size: 1.1rem; margin-bottom: 8px;">⚡ 本次改版優化項目：</p>
+            <p style="color: #e2e4ed;">1. <b>極速快板音樂（Fast Tempo BGM）</b>：初始節奏大幅加快，節拍感極強，活化運動神經。</p>
+            <p style="color: #e2e4ed;">2. <b>唯有目標位置著燈</b>：畫面上平時不著燈，只有目前「指定的題目任務圓圈」才會亮起顯眼霓虹光芒，聚焦視覺。</p>
+            <p style="color: #e2e4ed;">3. <b>中間顯示題目（拒絕黑底）</b>：去掉頂部厚重黑方塊，題目將以「巨大中空透視字體」直接浮現在畫面正中央的站立區，邊看鏡頭照鏡子邊看題。</p>
+        </div>
+
+        <button id="btn-start" class="start-btn">進入快板互動空間</button>
+        <div id="status-text" style="margin-top: 20px; font-size: 1rem; color: #a0a5c0;">準備就緒。</div>
     </div>
 
     <div id="game-container">
         <div id="hud-top">
-            <p id="task-instruction">🔍 正在偵測您的雙腳...</p>
-            <p id="score-text">成功踩踏得分: <span id="score-val" style="color:#00f0ff; font-weight:bold;">0</span></p>
+            <p id="score-text">得分: <span id="score-val" style="color:#00ff66; font-size: 1.5rem;">0</span></p>
         </div>
-        
-        <div id="calibration-overlay">
-            <div id="guide-msg">⚠️ 請向後退，讓全身入鏡</div>
-            <div class="guide-box"></div>
-        </div>
-
         <div id="canvas-wrapper">
             <video id="webcam" autoplay playsinline muted></video>
             <canvas id="output-canvas"></canvas>
@@ -98,67 +78,142 @@
         const btnStart = document.getElementById('btn-start');
         const welcomeScreen = document.getElementById('welcome-screen');
         const gameContainer = document.getElementById('game-container');
-        const statusText = document.getElementById('status-text');
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('output-canvas');
         const ctx = canvas.getContext('2d');
-        
-        // UI 元件
-        const calibrationOverlay = document.getElementById('calibration-overlay');
-        const guideMsg = document.getElementById('guide-msg');
-        const taskInstruction = document.getElementById('task-instruction');
         const scoreVal = document.getElementById('score-val');
 
         let detector;
         let audioCtx;
         let isRunning = false;
-        let isCalibrated = false;
-
-        // 認知遊戲邏輯變數
-        let currentTargetZone = -1; // 當前提示要踩的目標區域 (0, 1, 2)
+        let currentTargetZone = -1; 
         let score = 0;
+        let isTaskProcessing = false;
+        let latestPoses = []; 
 
-        // 【專業防誤觸核心】鎖定機制
-        // 只有當區域從 false 變 true 的那一瞬間（Edge Trigger）才算得分並響音樂
-        let zoneStates = [false, false, false]; 
-        const frequencies = [261.63, 293.66, 329.63]; // Do, Re, Mi
+        // 題目文字動態記錄 (用於畫在畫面正中央)
+        let centerTaskText = "預備！請站在中央";
+        let centerTextColor = "#ffff00";
 
+        // 像素動態對比變數
+        let lastFrameData = null;
+        
+        // 8圓獨立防閃爍與發聲鎖
+        let zoneStates = new Array(8).fill(false); 
+        let activeTimers = new Array(8).fill(0); 
+        const HOLD_DURATION = 500; 
+
+        // C Major 大調順階和弦頻率
+        const chordFrequencies = [
+            [261.63, 329.63, 392.00], // 0: 左上方
+            [293.66, 349.23, 440.00], // 1: 正上方
+            [329.63, 392.00, 493.88], // 2: 右上方
+            [349.23, 440.00, 523.25], // 3: 左邊   
+            [392.00, 493.88, 587.33], // 4: 右邊   
+            [440.00, 523.25, 659.25], // 5: 左下方
+            [493.88, 587.33, 698.46], // 6: 正下方
+            [523.25, 659.25, 783.99]  // 7: 右下方
+        ];
+
+        let circlesConfig = [];
+
+        // --- 🎵 快板音樂合成核心引擎 ---
         function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                startFastBGM(); // 啟動快板背景音樂
+            }
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        // 播放溫和的高品質復康回饋音效
-        function playTone(freq, type = 'triangle', duration = 0.4) {
-            initAudio();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
+        // 1. 【改進：快板音樂發生器】
+        function startFastBGM() {
+            let beatCount = 0;
+            
+            function playNextBeat() {
+                if (!isRunning) return;
+                
+                const time = audioCtx.currentTime;
+                // 初始速度大幅調快！原本 500ms 降至 290ms 一拍（超強快板節奏感）
+                const tempoSpeed = Math.max(200, 290 - (Math.floor(score / 50) * 15)); 
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                // 採用更帶動感的「方波 (Square Wave)」過濾低音，製造電子節奏鼓點
+                osc.type = 'triangle';
+                const baseNotes = [130.81, 196.00, 164.81, 220.00]; // C3, G3, E3, A3 快板低音線
+                osc.frequency.setValueAtTime(baseNotes[beatCount % 4], time);
+                
+                gain.gain.setValueAtTime(0.06, time); 
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15); // 短促乾脆的快板節拍
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(time);
+                osc.stop(time + 0.15);
+
+                beatCount++;
+                setTimeout(playNextBeat, tempoSpeed);
+            }
+            playNextBeat();
         }
 
-        // 隨機更換下一個認知踩踏目標
+        // 2. 動作和弦疊加器
+        function playDynamicChord(chordArr, isCorrect = false) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const duration = isCorrect ? 0.5 : 0.3;
+            const waveType = isCorrect ? 'sine' : 'triangle';
+            const volume = isCorrect ? 0.25 : 0.15;
+
+            chordArr.forEach((freq) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = waveType;
+                osc.frequency.setValueAtTime(isCorrect ? freq * 1.4 : freq, now);
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            });
+        }
+
+        // 1:1 照鏡子坐標物理映射
+        function updateCirclesLayout() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const r = Math.min(w, h) * 0.12; 
+            
+            const cx = [w * 0.82, w * 0.5, w * 0.18]; // 0:左欄(畫面左), 1:中欄, 2:右欄(畫面右)
+            const cy = [h * 0.22, h * 0.5, h * 0.78]; // 0:上, 1:中, 2:下
+
+            circlesConfig = [
+                { id: 0, name: "左上方 🔴【用手拍】", x: cx[0], y: cy[0], radius: r, type: 'hand' },
+                { id: 1, name: "正上方 🔴【用手拍】", x: cx[1], y: cy[0], radius: r, type: 'hand' },
+                { id: 2, name: "右上方 🔴【用手拍】", x: cx[2], y: cy[0], radius: r, type: 'hand' },
+                { id: 3, name: "左邊 🟢【大側擺】",   x: cx[0], y: cy[1], radius: r, type: 'side' },
+                { id: 4, name: "右邊 🟢【大側擺】",   x: cx[2], y: cy[1], radius: r, type: 'side' },
+                { id: 5, name: "左下方 🔵【用腳踩】", x: cx[0], y: cy[2], radius: r, type: 'foot' },
+                { id: 6, name: "正下方 🔵【用腳踩】", x: cx[1], y: cy[2], radius: r, type: 'foot' },
+                { id: 7, name: "右下方 🔵【用腳踩】", x: cx[2], y: cy[2], radius: r, type: 'foot' }
+            ];
+        }
+
         function nextChallenge() {
             const lastTarget = currentTargetZone;
-            // 確保連續兩次目標不重複
             while (currentTargetZone === lastTarget) {
-                currentTargetZone = Math.floor(Math.random() * 3);
+                currentTargetZone = Math.floor(Math.random() * 8);
             }
-            const zoneNames = ["左邊【 1 號地毯 】", "中間【 2 號地毯 】", "右邊【 3 號地毯 】"];
-            taskInstruction.innerText = `🎯 請用腳踩：${zoneNames[currentTargetZone]}`;
-            taskInstruction.style.color = "#ffff00";
+            // 【優化項目：更新中央顯示題目內容】
+            centerTaskText = circlesConfig[currentTargetZone].name;
+            centerTextColor = "#ffff00"; // 重設為顯眼黃色
+            isTaskProcessing = false;
         }
 
         btnStart.addEventListener('click', async () => {
-            btnStart.disabled = true;
-            statusText.innerText = '⚡ 正在調配相機並喚醒 AI 骨骼追蹤引擎...';
-            
             try {
                 initAudio();
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -169,170 +224,203 @@
                 await new Promise((resolve) => { video.onloadedmetadata = () => resolve(video); });
                 video.play();
 
-                statusText.innerText = '⚙️ 正在建立樂齡防跌視覺辨識模組...';
-                detector = await poseDetection.createDetector(
-                    poseDetection.SupportedModels.BlazePose, 
-                    { runtime: 'tfjs', enableSmoothing: true, modelType: 'full' }
-                );
-
                 welcomeScreen.style.display = 'none';
                 gameContainer.style.display = 'block';
                 isRunning = true;
                 
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
+                updateCirclesLayout();
                 
+                poseDetection.createDetector(
+                    poseDetection.SupportedModels.BlazePose, { runtime: 'tfjs', enableSmoothing: true, modelType: 'full' }
+                ).then(d => { detector = d; }).catch(e => console.log("純像素動態感應模式運行中"));
+
                 requestAnimationFrame(renderLoop);
-            } catch (err) {
-                console.error(err);
-                btnStart.disabled = false;
-                statusText.innerText = '❌ 開啟失敗：請確認鏡頭權限已開啟，或嘗試更換瀏覽器。';
-            }
+                setInterval(runAIInBackground, 100); 
+                setTimeout(nextChallenge, 1200);
+
+            } catch (err) { alert('無法開啟鏡頭，請檢查權限。'); }
         });
 
-        async function renderLoop() {
+        async function runAIInBackground() {
+            if (!isRunning || !detector) return;
+            try {
+                const poses = await detector.estimatePoses(video, { flipHorizontal: false, maxPoses: 1 });
+                if (poses && poses.length > 0) latestPoses = poses[0].keypoints;
+            } catch (e) {}
+        }
+
+        function renderLoop() {
             if (!isRunning) return;
 
-            // 1. 繪製相機原生影格
+            const now = Date.now();
+
+            // 1. 畫出原始鏡頭畫面
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const zoneWidth = canvas.width / 3;
-            const zoneHeight = canvas.height * 0.25;
-            const zoneY = canvas.height - zoneHeight;
-            
-            let activeZonesThisFrame = [false, false, false];
-            let feetDetectedThisFrame = 0;
+            const cellWidth = canvas.width / 3;
+            const cellHeight = canvas.height / 3;
 
-            // 2. AI 人體姿態識別與防跌結點抓取
-            if (detector) {
-                try {
-                    const poses = await detector.estimatePoses(video, { flipHorizontal: false, maxPoses: 1 });
+            // 2. 圓形動態像素感應
+            const currentFrameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let motionCounter = new Array(8).fill(0);
 
-                    if (poses && poses.length > 0) {
-                        const keypoints = poses[0].keypoints;
-                        const leftAnkle = keypoints[27];
-                        const rightAnkle = keypoints[28];
-                        const feet = [leftAnkle, rightAnkle];
-
-                        feet.forEach(foot => {
-                            // 調高信心度閾值至 0.7，排除長者長褲、裙襬或地板雜物陰影造成的抖動誤判
-                            if (foot && foot.score > 0.7) {
-                                feetDetectedThisFrame++;
-                                const fx = foot.x;
-                                const fy = foot.y;
-
-                                // 踩踏碰撞檢測
-                                if (fy >= zoneY && fy <= canvas.height) {
-                                    const zoneIndex = Math.floor(fx / zoneWidth);
-                                    if (zoneIndex >= 0 && zoneIndex <= 2) {
-                                        activeZonesThisFrame[zoneIndex] = true;
+            if (lastFrameData) {
+                for (let y = 0; y < canvas.height; y += 4) {
+                    for (let x = 0; x < canvas.width; x += 4) {
+                        circlesConfig.forEach((circle, idx) => {
+                            // 【關鍵優化：只有目前指定的目標題目，才開啟底層像素感應，防雜訊誤觸】
+                            if (idx === currentTargetZone) {
+                                const dx = x - circle.x;
+                                const dy = y - circle.y;
+                                if (dx * dx + dy * dy < circle.radius * circle.radius) {
+                                    const i = (y * canvas.width + x) * 4;
+                                    const diffR = Math.abs(currentFrameData.data[i] - lastFrameData.data[i]);
+                                    const diffG = Math.abs(currentFrameData.data[i+1] - lastFrameData.data[i+1]);
+                                    const diffB = Math.abs(currentFrameData.data[i+2] - lastFrameData.data[i+2]);
+                                    if (diffR + diffG + diffB > 75) motionCounter[idx]++;
                                     }
-                                }
-
-                                // 高對比樂齡友善視覺反饋：外圈加粗發光霓虹藍
-                                ctx.beginPath();
-                                ctx.arc(fx, fy, 20, 0, 2 * Math.PI);
-                                ctx.strokeStyle = '#00f0ff';
-                                ctx.lineWidth = 5;
-                                ctx.stroke();
-                                
-                                // 內圈高亮實心核心
-                                ctx.beginPath();
-                                ctx.arc(fx, fy, 8, 0, 2 * Math.PI);
-                                ctx.fillStyle = '#ffffff';
-                                ctx.fill();
                             }
                         });
                     }
-                } catch (e) { console.error(e); }
-            }
-
-            // 3. 自動智能校正引導機制
-            // 必須同時清晰偵測到雙腳 (2隻腳)，才視為成功入鏡
-            if (feetDetectedThisFrame >= 2) {
-                if (!isCalibrated) {
-                    isCalibrated = true;
-                    calibrationOverlay.classList.add('ready');
-                    guideMsg.innerText = '✅ 校正成功！準備開始';
-                    // 延時 1.5 秒後隱藏校正框，讓畫面乾淨
-                    setTimeout(() => {
-                        calibrationOverlay.style.display = 'none';
-                        nextChallenge(); // 啟動第一個遊戲任務
-                    }, 1500);
-                }
-            } else {
-                // 如果長者中途走開或走太近導致腳出鏡，重新顯示引導
-                if (isCalibrated && calibrationOverlay.style.display === 'none') {
-                    isCalibrated = false;
-                    calibrationOverlay.style.display = 'flex';
-                    calibrationOverlay.classList.remove('ready');
-                    guideMsg.innerText = '⚠️ 請向後退，讓全身上下入鏡';
-                    taskInstruction.innerText = `🔍 正在等待長者就位...`;
-                    taskInstruction.style.color = "#ff007f";
                 }
             }
+            lastFrameData = currentFrameData;
 
-            // 4. 繪製高對比霓虹大方格與防誤觸音效邏輯
-            for (let i = 0; i < 3; i++) {
-                const zoneX = i * zoneWidth;
+            let rawActiveStates = new Array(8).fill(false);
+            if (currentTargetZone !== -1 && motionCounter[currentTargetZone] > 15) {
+                rawActiveStates[currentTargetZone] = true;
+                activeTimers[currentTargetZone] = now + HOLD_DURATION; 
+            }
 
-                if (isCalibrated && activeZonesThisFrame[i]) {
-                    // 踩中狀態：極高對比亮黃色 (符合弱視/白內障長者視覺優化)
-                    ctx.fillStyle = 'rgba(255, 234, 0, 0.75)';
-                    ctx.fillRect(zoneX, zoneY, zoneWidth, zoneHeight);
-                    ctx.strokeStyle = '#ffff00';
-                    ctx.lineWidth = 8;
-                    ctx.strokeRect(zoneX, zoneY, zoneWidth, zoneHeight);
-
-                    // 【核心優化：邊緣觸發與防重複誤觸演算法】
-                    if (!zoneStates[i]) {
-                        zoneStates[i] = true; // 鎖定狀態
-
-                        // 判斷是否踩中認知指定的正確任務方格
-                        if (i === currentTargetZone) {
-                            score += 10;
-                            scoreVal.innerText = score;
-                            // 答對給予清脆的成功音效
-                            playTone(523.25, 'sine', 0.2); // 高音 Do
-                            setTimeout(() => playTone(659.25, 'sine', 0.3), 100); // 高音 Mi
-                            
-                            taskInstruction.innerText = "🌟 太棒了！答對了！";
-                            taskInstruction.style.color = "#00ff66";
-                            
-                            // 1.2 秒後切換下一個隨機任務，給長者足夠的反應與收腳時間
-                            setTimeout(nextChallenge, 1200);
-                        } else {
-                            // 踩錯或者單純踩普通鍵：播放常規地毯音
-                            playTone(frequencies[i], 'triangle', 0.4);
-                        }
+            // 3. 畫出偵測到嘅人體 AI 點點
+            if (latestPoses && latestPoses.length > 0) {
+                const pointsToDraw = [11, 12, 15, 16, 23, 24, 27, 28];
+                pointsToDraw.forEach(index => {
+                    const kp = latestPoses[index];
+                    if (kp && kp.score > 0.4) {
+                        ctx.beginPath();
+                        ctx.arc(kp.x, kp.y, 14, 0, 2 * Math.PI);
+                        ctx.strokeStyle = (index === 15 || index === 16) ? '#ff007f' : '#00f0ff'; 
+                        ctx.lineWidth = 4;
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fill();
                     }
-                } else {
-                    // 常態未踩中：高飽和度霓虹藍粗邊框，內部極低透明度，防背景反光干擾
-                    ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
-                    ctx.fillRect(zoneX, zoneY, zoneWidth, zoneHeight);
-                    ctx.strokeStyle = 'rgba(0, 240, 255, 0.8)';
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(zoneX, zoneY, zoneWidth, zoneHeight);
-                    
-                    // 當腳完全離開該格，解開鎖定，允許下一次踩踏
-                    zoneStates[i] = false;
-                }
-
-                // 5. 繪製清晰巨大的編號文字（作二次水平反轉防鏡像顛倒）
-                ctx.save();
-                ctx.translate(zoneX + zoneWidth / 2, zoneY + zoneHeight / 2);
-                ctx.scale(-1, 1);
-                ctx.fillStyle = (isCalibrated && activeZonesThisFrame[i]) ? '#000000' : '#ffffff';
-                ctx.font = 'bold 32px system-ui, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`${i + 1} 號`, 0, 0);
-                ctx.restore();
+                });
             }
+
+            // 4. 【核心改進：只有題目指定的圓形才著燈繪製】
+            circlesConfig.forEach((circle, i) => {
+                // 只有當前索引是題目指定的，才允許渲染。其餘 7 個圓圈完全隱形！
+                if (circle.id === currentTargetZone) {
+                    const isVisuallyActive = now < activeTimers[circle.id];
+                    ctx.save();
+                    
+                    if (isVisuallyActive) {
+                        // 擊中狀態：金黃色耀眼大燈
+                        ctx.beginPath();
+                        ctx.arc(circle.x, circle.y, circle.radius * 1.05, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(255, 221, 0, 0.85)';
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 8;
+                        ctx.stroke();
+
+                        if (!zoneStates[circle.id]) {
+                            zoneStates[circle.id] = true;
+                            if (!isTaskProcessing) {
+                                isTaskProcessing = true;
+                                score += 10;
+                                scoreVal.innerText = score;
+                                
+                                playDynamicChord(chordFrequencies[circle.id], true);
+                                
+                                // 更新中央題目為答對高光提示
+                                centerTaskText = "🌟 完美擊中！";
+                                centerTextColor = "#00ff66";
+                                
+                                setTimeout(nextChallenge, 2500); 
+                            }
+                        }
+                    } else {
+                        // 常態未擊中：【只有題目要求的格子著燈】
+                        ctx.beginPath();
+                        ctx.arc(circle.x, circle.y, circle.radius, 0, 2 * Math.PI);
+                        
+                        // 根據類型發出亮麗的呼吸燈邊框，內部半透明
+                        if (circle.type === 'hand') {
+                            ctx.fillStyle = 'rgba(255, 0, 127, 0.15)';
+                            ctx.strokeStyle = '#ff007f';
+                        } else if (circle.type === 'side') {
+                            ctx.fillStyle = 'rgba(0, 255, 102, 0.15)';
+                            ctx.strokeStyle = '#00ff66';
+                        } else {
+                            ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+                            ctx.strokeStyle = '#00f0ff';
+                        }
+                        ctx.fill();
+                        ctx.lineWidth = 5;
+                        ctx.stroke();
+                        
+                        zoneStates[circle.id] = false;
+                    }
+
+                    // 繪製圓圈內的號碼與方向文字
+                    ctx.translate(circle.x, circle.y);
+                    ctx.scale(-1, 1);
+                    ctx.fillStyle = isVisuallyActive ? '#000000' : '#ffffff';
+                    ctx.font = 'bold 24px system-ui, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const labels = ["左上方", "正上方", "右上方", "左 邊", "右 邊", "左下方", "正下方", "右下方"];
+                    ctx.fillText(labels[circle.id], 0, 0);
+                    ctx.restore();
+                } else {
+                    // 非題目的另外 7 個圓圈：重置發聲鎖定狀態
+                    zoneStates[circle.id] = false;
+                }
+            });
+
+            // 5. 【核心改進：正中央透視顯示大字題目，拒絕黑色底色】
+            ctx.save();
+            // 定位到畫布正中央 (九宮格的中央格)
+            ctx.translate(canvas.width * 0.5, canvas.height * 0.5);
+            ctx.scale(-1, 1); // 水平翻轉文字使其正向顯示
+            
+            // 繪製溫和的圓形安全站立邊界圈 (極淡白色，完全不擋實景鏡頭)
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.min(canvas.width, canvas.height) * 0.12, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+
+            // 實時寫上巨大的透視大字題目
+            ctx.fillStyle = centerTextColor;
+            // 採用極粗、極大的商用級字體，確保 2.5 米外一目了然
+            ctx.font = 'bold 34px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // 給大字體加上一層淡淡的黑色發光描邊（Text Stroke），確保長者無論穿什麼衣服、背景多雜亂，都能清晰看懂字
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.lineWidth = 6;
+            ctx.strokeText(centerTaskText, 0, 0);
+            ctx.fillText(centerTaskText, 0, 0);
+            
+            ctx.restore();
 
             requestAnimationFrame(renderLoop);
         }
+
+        window.addEventListener('resize', () => {
+            if(canvas.width > 0) updateCirclesLayout();
+        });
     </script>
 </body>
 </html>
