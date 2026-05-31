@@ -3,237 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>巨型 AR 地毯踏踏樂 - 實戰運行版</title>
+    <title>巨型 AR 地毯踏踏樂 - 專業復康優化版</title>
     
-    <!-- 引入 TensorFlow.js 核心與 Pose-Detection 模型（不依賴外部伺服器載入權重，直接在瀏覽器高效執行） -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.2.0/dist/tf-core.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.2.0/dist/tf-converter.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.2.0/dist/tf-backend-webgl.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; user-select: none; }
         body {
-            margin: 0;
-            padding: 0;
-            background: #0d0e15;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
-            height: 100vh;
-            width: 100vw;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            margin: 0; padding: 0; background: #08090f; color: #fff;
+            font-family: system-ui, -apple-system, sans-serif; overflow: hidden;
+            height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
         }
 
+        /* 歡迎與授權 */
         #welcome-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at center, #1a1c29 0%, #0d0e15 100%);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 30px;
-            text-align: center;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #151828 0%, #08090f 100%);
+            z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;
         }
-
-        .title-container {
-            margin-bottom: 30px;
-        }
-
-        .title-container h1 {
-            font-size: 2.5rem;
-            color: #00f0ff;
-            margin: 0 0 10px 0;
-            text-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
-            letter-spacing: 2px;
-        }
-
-        .title-container p {
-            font-size: 1.1rem;
-            color: #a0a5c0;
-            margin: 0;
-        }
-
-        .instructions {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 25px;
-            max-width: 500px;
-            margin-bottom: 40px;
-            text-align: left;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .instructions ol {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .instructions li {
-            margin-bottom: 12px;
-            color: #e2e4ed;
-            font-size: 1.05rem;
-            line-height: 1.5;
-        }
-
         .start-btn {
-            background: linear-gradient(135deg, #ff007f 0%, #7900ff 100%);
-            color: white;
-            border: none;
-            padding: 16px 45px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
-            transition: all 0.3s ease;
-            letter-spacing: 1px;
+            background: linear-gradient(135deg, #00f0ff 0%, #7900ff 100%);
+            color: white; border: none; padding: 18px 50px; font-size: 1.3rem; font-weight: bold;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(0, 240, 255, 0.3); transition: all 0.3s ease;
         }
+        .start-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 240, 255, 0.6); }
 
-        .start-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 35px rgba(255, 0, 127, 0.7);
+        /* 遊戲核心版面 */
+        #game-container { position: relative; width: 100%; height: 100%; display: none; }
+        #canvas-wrapper { position: relative; width: 100%; height: 100%; background: #000; }
+        video { display: none; }
+        canvas { height: 100%; width: 100%; object-fit: contain; transform: scaleX(-1); }
+
+        /* 大字體、高對比 HUD 抬頭顯示 */
+        #hud-top {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(8, 9, 15, 0.9); border-radius: 20px; padding: 15px 40px;
+            border: 3px solid #00f0ff; text-align: center; z-index: 10; min-width: 320px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
         }
+        #task-instruction { font-size: 1.8rem; font-weight: 900; color: #ffff00; margin: 0; letter-spacing: 1px; }
+        #score-text { font-size: 1.1rem; color: #a0a5c0; margin: 5px 0 0 0; }
 
-        .start-btn:disabled {
-            background: #4a4d61;
-            box-shadow: none;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        #status-text {
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #ff007f;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: none;
-        }
-
-        #canvas-wrapper {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #000;
-        }
-
-        video {
-            display: none;
-        }
-
-        canvas {
-            height: 100%;
-            width: 100%;
-            object-fit: contain;
-            transform: scaleX(-1); /* 鏡像畫面 */
-        }
-
-        #hud {
-            position: absolute;
-            top: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(13, 14, 21, 0.85);
-            border-radius: 30px;
-            padding: 12px 30px;
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            backdrop-filter: blur(10px);
-            pointer-events: none;
-            text-align: center;
-            z-index: 10;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
-        #hud p {
-            margin: 0;
-            font-size: 1.1rem;
-            font-weight: 500;
-            letter-spacing: 1px;
-            color: #fff;
-        }
-
-        #hud span {
-            color: #ff007f;
-            font-weight: bold;
-        }
-
+        /* 校正指引遮罩 */
         #calibration-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 8px solid rgba(0, 240, 255, 0.3);
-            pointer-events: none;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 5;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5; display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-
+        #guide-msg {
+            background: rgba(255, 0, 127, 0.85); padding: 12px 30px; border-radius: 30px;
+            font-size: 1.3rem; font-weight: bold; color: white; margin-bottom: 20px;
+            transition: all 0.3s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
         .guide-box {
-            width: 60%;
-            height: 80%;
-            border: 3px dashed rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 1.2rem;
+            width: 55%; height: 75%; border: 4px dashed rgba(255, 0, 127, 0.6);
+            border-radius: 24px; transition: all 0.3s ease;
         }
+        /* 校正成功時的樣式變換 */
+        .ready .guide-box { border-color: #00ff66; background: rgba(0, 255, 102, 0.03); }
+        .ready #guide-msg { background: rgba(0, 200, 80, 0.9); }
     </style>
 </head>
 <body>
 
-    <!-- 歡迎與授權畫面 -->
     <div id="welcome-screen">
-        <div class="title-container">
-            <h1>🎹 巨型 AR 地毯踏踏樂</h1>
-            <p>跨世代全身互動體感訓練系統</p>
-        </div>
-        
-        <div class="instructions">
-            <ol>
-                <li>點擊下方按鈕，並<b>允許相機/鏡頭存取權限</b>。</li>
-                <li>把手機或電腦放遠（例如放在電視櫃或桌上）。</li>
-                <li><b>向後退約 2 米</b>，讓螢幕能看到您的<b>全身上下（包含雙腳）</b>。</li>
-                <li>畫面底部會出現三個藍色格子，用腳踩踏格子即可發出 <b>Do、Re、Mi</b> 的琴音！</li>
-            </ol>
-        </div>
-
-        <button id="btn-start" class="start-btn">進入 AR 互動空間</button>
-        <div id="status-text">系統準備就緒。點擊按鈕後將載入本地 AI 引擎。</div>
+        <h1 style="font-size: 2.5rem; color: #00f0ff; margin-bottom: 5px;">🎹 巨型 AR 地毯踏踏樂 (專業優化版)</h1>
+        <p style="color: #a0a5c0; font-size: 1.1rem; max-width: 500px; text-align: center; line-height: 1.6; margin-bottom: 30px;">
+            本版本優化了<b>「防長者雙腳連續誤觸機制」</b>，並新增了<b>「大腦認知任務模式」</b>與遠距離自動偵測校正框。
+        </p>
+        <button id="btn-start" class="start-btn">開始復康訓練</button>
+        <div id="status-text" style="margin-top: 15px; font-size: 0.9rem; color: #ff007f;">系統就緒。</div>
     </div>
 
-    <!-- 遊戲主畫面 -->
     <div id="game-container">
-        <div id="hud">
-            <p>🏃‍♂️ 請後退至全身入鏡 • 雙腳踩踏下方方格發聲</p>
+        <div id="hud-top">
+            <p id="task-instruction">🔍 正在偵測您的雙腳...</p>
+            <p id="score-text">成功踩踏得分: <span id="score-val" style="color:#00f0ff; font-weight:bold;">0</span></p>
         </div>
         
         <div id="calibration-overlay">
-            <div class="guide-box">請將全身保持在畫面中央</div>
+            <div id="guide-msg">⚠️ 請向後退，讓全身入鏡</div>
+            <div class="guide-box"></div>
         </div>
 
         <div id="canvas-wrapper">
@@ -250,135 +102,127 @@
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('output-canvas');
         const ctx = canvas.getContext('2d');
+        
+        // UI 元件
+        const calibrationOverlay = document.getElementById('calibration-overlay');
+        const guideMsg = document.getElementById('guide-msg');
+        const taskInstruction = document.getElementById('task-instruction');
+        const scoreVal = document.getElementById('score-val');
 
         let detector;
         let audioCtx;
-        let zoneStates = [false, false, false];
-        const frequencies = [261.63, 293.66, 329.63]; // C4, D4, E4 (Do, Re, Mi)
         let isRunning = false;
+        let isCalibrated = false;
 
-        // 音訊初始化與播放函數
+        // 認知遊戲邏輯變數
+        let currentTargetZone = -1; // 當前提示要踩的目標區域 (0, 1, 2)
+        let score = 0;
+
+        // 【專業防誤觸核心】鎖定機制
+        // 只有當區域從 false 變 true 的那一瞬間（Edge Trigger）才算得分並響音樂
+        let zoneStates = [false, false, false]; 
+        const frequencies = [261.63, 293.66, 329.63]; // Do, Re, Mi
+
         function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function playSound(freq) {
+        // 播放溫和的高品質復康回饋音效
+        function playTone(freq, type = 'triangle', duration = 0.4) {
             initAudio();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle'; // 採用更柔和飽滿的三角波，比正弦波更像電子琴
+            osc.type = type;
             osc.frequency.value = freq;
-            
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            // 漸弱釋放音，製造出自然的踩踏音效
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-            
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.5);
+            osc.stop(audioCtx.currentTime + duration);
         }
 
-        // 核心啟動按鈕異步流程
+        // 隨機更換下一個認知踩踏目標
+        function nextChallenge() {
+            const lastTarget = currentTargetZone;
+            // 確保連續兩次目標不重複
+            while (currentTargetZone === lastTarget) {
+                currentTargetZone = Math.floor(Math.random() * 3);
+            }
+            const zoneNames = ["左邊【 1 號地毯 】", "中間【 2 號地毯 】", "右邊【 3 號地毯 】"];
+            taskInstruction.innerText = `🎯 請用腳踩：${zoneNames[currentTargetZone]}`;
+            taskInstruction.style.color = "#ffff00";
+        }
+
         btnStart.addEventListener('click', async () => {
             btnStart.disabled = true;
-            statusText.innerText = '⚡ 正在啟動鏡頭並初始化 AI 骨骼識別引擎...';
+            statusText.innerText = '⚡ 正在調配相機並喚醒 AI 骨骼追蹤引擎...';
             
             try {
-                // 1. 初始化音訊（瀏覽器要求必須由使用者點擊觸發）
                 initAudio();
-
-                // 2. 獲取相機權限與視訊串流
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        facingMode: "user" // 使用前置鏡頭
-                    },
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
                     audio: false
                 });
                 video.srcObject = stream;
-                
-                // 等待影片元數據載入完畢
-                await new Promise((resolve) => {
-                    video.onloadedmetadata = () => { resolve(video); };
-                });
+                await new Promise((resolve) => { video.onloadedmetadata = () => resolve(video); });
                 video.play();
 
-                // 3. 載入 TensorFlow.js Pose-Detection 模型 (BlazePose 適合單人全身精準追蹤)
-                statusText.innerText = '⚙️ 正在加載模型算法（首次加載約需 5-10 秒）...';
-                const model = poseDetection.SupportedModels.BlazePose;
-                const detectorConfig = {
-                    runtime: 'tfjs',
-                    enableSmoothing: true,
-                    modelType: 'full'
-                };
-                detector = await poseDetection.createDetector(model, detectorConfig);
+                statusText.innerText = '⚙️ 正在建立樂齡防跌視覺辨識模組...';
+                detector = await poseDetection.createDetector(
+                    poseDetection.SupportedModels.BlazePose, 
+                    { runtime: 'tfjs', enableSmoothing: true, modelType: 'full' }
+                );
 
-                // 4. 切換介面並開始運行主循環
                 welcomeScreen.style.display = 'none';
                 gameContainer.style.display = 'block';
                 isRunning = true;
                 
-                // 根據視訊實際比例調整畫布解析度
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 
                 requestAnimationFrame(renderLoop);
-
             } catch (err) {
                 console.error(err);
                 btnStart.disabled = false;
-                statusText.innerText = '❌ 啟動失敗：請確保已允許相機存取權限，或更換支援 WebGL 的瀏覽器再試。';
+                statusText.innerText = '❌ 開啟失敗：請確認鏡頭權限已開啟，或嘗試更換瀏覽器。';
             }
         });
 
-        // 遊戲核心渲染與體感碰撞檢測循環
         async function renderLoop() {
             if (!isRunning) return;
 
-            // 1. 繪製原始相機畫面
+            // 1. 繪製相機原生影格
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 定義地毯區域 (畫面底部 25%)
             const zoneWidth = canvas.width / 3;
             const zoneHeight = canvas.height * 0.25;
             const zoneY = canvas.height - zoneHeight;
             
             let activeZonesThisFrame = [false, false, false];
+            let feetDetectedThisFrame = 0;
 
-            // 2. 透過 AI 進行人體姿態偵測
+            // 2. AI 人體姿態識別與防跌結點抓取
             if (detector) {
                 try {
-                    const poses = await detector.estimatePoses(video, {
-                        flipHorizontal: false, // 畫布本身已在 CSS 進行鏡像反轉，這裡保持 false
-                        maxPoses: 1
-                    });
+                    const poses = await detector.estimatePoses(video, { flipHorizontal: false, maxPoses: 1 });
 
                     if (poses && poses.length > 0) {
                         const keypoints = poses[0].keypoints;
-                        
-                        // 提取左腳踝 (left_ankle) 與 右腳踝 (right_ankle)
-                        // BlazePose 節點索引: 27 為 left_ankle, 28 為 right_ankle
                         const leftAnkle = keypoints[27];
                         const rightAnkle = keypoints[28];
                         const feet = [leftAnkle, rightAnkle];
 
                         feet.forEach(foot => {
-                            // 只有當 AI 對該部位的信心度高於 0.65 時才採信，防止雜訊干擾
-                            if (foot && foot.score > 0.65) {
+                            // 調高信心度閾值至 0.7，排除長者長褲、裙襬或地板雜物陰影造成的抖動誤判
+                            if (foot && foot.score > 0.7) {
+                                feetDetectedThisFrame++;
                                 const fx = foot.x;
                                 const fy = foot.y;
 
-                                // 進行碰撞箱檢測 (Bounding Box Collision)
+                                // 踩踏碰撞檢測
                                 if (fy >= zoneY && fy <= canvas.height) {
                                     const zoneIndex = Math.floor(fx / zoneWidth);
                                     if (zoneIndex >= 0 && zoneIndex <= 2) {
@@ -386,77 +230,107 @@
                                     }
                                 }
 
-                                // 在使用者的腳踝處繪製高對比度藍色科技光圈
+                                // 高對比樂齡友善視覺反饋：外圈加粗發光霓虹藍
                                 ctx.beginPath();
-                                ctx.arc(fx, fy, 16, 0, 2 * Math.PI);
+                                ctx.arc(fx, fy, 20, 0, 2 * Math.PI);
                                 ctx.strokeStyle = '#00f0ff';
-                                ctx.lineWidth = 4;
-                                ctx.shadowBlur = 15;
-                                ctx.shadowColor = '#00f0ff';
+                                ctx.lineWidth = 5;
                                 ctx.stroke();
                                 
-                                // 內圈實心白色核心
+                                // 內圈高亮實心核心
                                 ctx.beginPath();
-                                ctx.arc(fx, fy, 6, 0, 2 * Math.PI);
+                                ctx.arc(fx, fy, 8, 0, 2 * Math.PI);
                                 ctx.fillStyle = '#ffffff';
                                 ctx.fill();
-                                
-                                // 重設陰影防干擾後續繪製
-                                ctx.shadowBlur = 0;
                             }
                         });
                     }
-                } catch (e) {
-                    console.error("AI 偵測影格出錯:", e);
+                } catch (e) { console.error(e); }
+            }
+
+            // 3. 自動智能校正引導機制
+            // 必須同時清晰偵測到雙腳 (2隻腳)，才視為成功入鏡
+            if (feetDetectedThisFrame >= 2) {
+                if (!isCalibrated) {
+                    isCalibrated = true;
+                    calibrationOverlay.classList.add('ready');
+                    guideMsg.innerText = '✅ 校正成功！準備開始';
+                    // 延時 1.5 秒後隱藏校正框，讓畫面乾淨
+                    setTimeout(() => {
+                        calibrationOverlay.style.display = 'none';
+                        nextChallenge(); // 啟動第一個遊戲任務
+                    }, 1500);
+                }
+            } else {
+                // 如果長者中途走開或走太近導致腳出鏡，重新顯示引導
+                if (isCalibrated && calibrationOverlay.style.display === 'none') {
+                    isCalibrated = false;
+                    calibrationOverlay.style.display = 'flex';
+                    calibrationOverlay.classList.remove('ready');
+                    guideMsg.innerText = '⚠️ 請向後退，讓全身上下入鏡';
+                    taskInstruction.innerText = `🔍 正在等待長者就位...`;
+                    taskInstruction.style.color = "#ff007f";
                 }
             }
 
-            // 3. 繪製底部三個霓虹鋼琴地毯方格與狀態更新
+            // 4. 繪製高對比霓虹大方格與防誤觸音效邏輯
             for (let i = 0; i < 3; i++) {
                 const zoneX = i * zoneWidth;
 
-                if (activeZonesThisFrame[i]) {
-                    // 被踩中狀態：亮高對比黃色，並有發光特效
-                    ctx.fillStyle = 'rgba(255, 234, 0, 0.65)';
+                if (isCalibrated && activeZonesThisFrame[i]) {
+                    // 踩中狀態：極高對比亮黃色 (符合弱視/白內障長者視覺優化)
+                    ctx.fillStyle = 'rgba(255, 234, 0, 0.75)';
                     ctx.fillRect(zoneX, zoneY, zoneWidth, zoneHeight);
-                    
                     ctx.strokeStyle = '#ffff00';
-                    ctx.lineWidth = 6;
+                    ctx.lineWidth = 8;
                     ctx.strokeRect(zoneX, zoneY, zoneWidth, zoneHeight);
 
-                    // 邊緣觸發機制 (Edge Trigger)：由「沒踩」變「踩中」的瞬間播放音效
+                    // 【核心優化：邊緣觸發與防重複誤觸演算法】
                     if (!zoneStates[i]) {
-                        playSound(frequencies[i]);
-                        zoneStates[i] = true;
+                        zoneStates[i] = true; // 鎖定狀態
+
+                        // 判斷是否踩中認知指定的正確任務方格
+                        if (i === currentTargetZone) {
+                            score += 10;
+                            scoreVal.innerText = score;
+                            // 答對給予清脆的成功音效
+                            playTone(523.25, 'sine', 0.2); // 高音 Do
+                            setTimeout(() => playTone(659.25, 'sine', 0.3), 100); // 高音 Mi
+                            
+                            taskInstruction.innerText = "🌟 太棒了！答對了！";
+                            taskInstruction.style.color = "#00ff66";
+                            
+                            // 1.2 秒後切換下一個隨機任務，給長者足夠的反應與收腳時間
+                            setTimeout(nextChallenge, 1200);
+                        } else {
+                            // 踩錯或者單純踩普通鍵：播放常規地毯音
+                            playTone(frequencies[i], 'triangle', 0.4);
+                        }
                     }
                 } else {
-                    // 常態未踩中：半透明科技霓虹藍
-                    ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
+                    // 常態未踩中：高飽和度霓虹藍粗邊框，內部極低透明度，防背景反光干擾
+                    ctx.fillStyle = 'rgba(0, 240, 255, 0.04)';
                     ctx.fillRect(zoneX, zoneY, zoneWidth, zoneHeight);
-                    
-                    ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
-                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = 'rgba(0, 240, 255, 0.8)';
+                    ctx.lineWidth = 4;
                     ctx.strokeRect(zoneX, zoneY, zoneWidth, zoneHeight);
                     
+                    // 當腳完全離開該格，解開鎖定，允許下一次踩踏
                     zoneStates[i] = false;
                 }
 
-                // 4. 繪製按鈕文字 (考慮到 Canvas 被 CSS 鏡像反轉，文字需作二次反轉使其正常顯示)
+                // 5. 繪製清晰巨大的編號文字（作二次水平反轉防鏡像顛倒）
                 ctx.save();
                 ctx.translate(zoneX + zoneWidth / 2, zoneY + zoneHeight / 2);
-                ctx.scale(-1, 1); // 將文字水平翻轉回來
-                
-                ctx.fillStyle = activeZonesThisFrame[i] ? '#000000' : '#ffffff';
-                ctx.font = 'bold 22px system-ui';
+                ctx.scale(-1, 1);
+                ctx.fillStyle = (isCalibrated && activeZonesThisFrame[i]) ? '#000000' : '#ffffff';
+                ctx.font = 'bold 32px system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                
-                const noteNames = ["音符 Do", "音符 Re", "音符 Mi"];
-                ctx.fillText(noteNames[i], 0, 0);
+                ctx.fillText(`${i + 1} 號`, 0, 0);
                 ctx.restore();
             }
 
-            // 繼續下一影格
             requestAnimationFrame(renderLoop);
         }
     </script>
