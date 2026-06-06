@@ -93,8 +93,7 @@
             <p id="score-text">SCORE: <span id="score-val" style="color:#00ff66;">0</span></p>
         </div>
         <div id="canvas-wrapper">
-       
-              <video id="webcam" autoplay playsinline muted></video>
+            <video id="webcam" autoplay playsinline muted></video>
             <canvas id="output-canvas"></canvas>
         </div>
     </div>
@@ -229,12 +228,10 @@
             circlesConfig = [
                 { id: 0, labelName: "左上方", x: cx[0], y: cy[0], radius: r, type: 'hand', number: 0, isCleared: false },
                 { id: 1, labelName: "正上方", x: cx[1], y: cy[0], radius: r, type: 'hand', number: 0, isCleared: false },
-                { id: 2, labelName: "右上方", x: cx[2], y: cy[0], radius: r, type: 'hand', number: 0, isCleared: 
-                    false },
+                { id: 2, labelName: "右上方", x: cx[2], y: cy[0], radius: r, type: 'hand', number: 0, isCleared: false },
                 { id: 3, labelName: "左 邊",  x: cx[0], y: cy[1], radius: r, type: 'side', number: 0, isCleared: false },
                 { id: 4, labelName: "右 邊",  x: cx[2], y: cy[1], radius: r, type: 'side', number: 0, isCleared: false },
-                { id: 5, labelName: "左下方", x: cx[0], y: cy[2], radius: r, type: 'foot', 
-                    number: 0, isCleared: false },
+                { id: 5, labelName: "左下方", x: cx[0], y: cy[2], radius: r, type: 'foot', number: 0, isCleared: false },
                 { id: 6, labelName: "正下方", x: cx[1], y: cy[2], radius: r, type: 'foot', number: 0, isCleared: false },
                 { id: 7, labelName: "右下方", x: cx[2], y: cy[2], radius: r, type: 'foot', number: 0, isCleared: false }
             ];
@@ -249,7 +246,8 @@
                 while (currentTargetZoneLvl1 === lastZone) {
                     currentTargetZoneLvl1 = Math.floor(Math.random() * 8);
                 }
-                const directionLabels = ["左上方 🔴", "正上方 🔴", "右上方 🔴", "左邊 🟢", "右邊 🟢", "左下方 🔵", "正下方 🔵", "右下方 🔵"];
+                // 移除文字顯示，並將 🔴->🏀, 🟢->🏐, 🔵->⚽
+                const directionLabels = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
                 centerTaskText = `🎯 擊中：${directionLabels[currentTargetZoneLvl1]}`;
                 centerTextColor = "#ffff00";
                 centerTextScale = 1.0;
@@ -342,8 +340,6 @@
                 for (let y = 0; y < canvas.height; y += 4) {
                     for (let x = 0; x < canvas.width; x += 4) {
                         circlesConfig.forEach((circle, idx) => {
-        
-                             
                             // 像素感應過濾條件
                             let shouldScan = false;
                     
@@ -351,14 +347,12 @@
                             if (gameLevel === 2 && !circle.isCleared) shouldScan = true;            // 全場未清空圓
 
                             if (shouldScan) {
- 
                                 const dx = x - circle.x;
                                 const dy = y - circle.y;
                            
                                 if (dx * dx + dy * dy < circle.radius * circle.radius) {
                                     const i = (y * canvas.width + x) * 4;
-                                    const diffR 
-                                = Math.abs(currentFrameData.data[i] - lastFrameData.data[i]);
+                                    const diffR = Math.abs(currentFrameData.data[i] - lastFrameData.data[i]);
                                     const diffG = Math.abs(currentFrameData.data[i+1] - lastFrameData.data[i+1]);
                                     const diffB = Math.abs(currentFrameData.data[i+2] - lastFrameData.data[i+2]);
                                     if (diffR + diffG + diffB > 75) motionCounter[idx]++;
@@ -385,12 +379,10 @@
                     const kp = latestPoses[index];
                     if (kp && kp.score > 0.4) {
                         ctx.beginPath();
-                        ctx.arc(kp.x, 
-                            kp.y, 13, 0, 2 * Math.PI);
+                        ctx.arc(kp.x, kp.y, 13, 0, 2 * Math.PI);
                         ctx.strokeStyle = (index === 15 || index === 16) ? '#ff007f' : '#00f0ff'; 
                         ctx.lineWidth = 4;
                         ctx.stroke();
-        
                     }
                 });
             }
@@ -400,8 +392,7 @@
                 
                 // 決定這個圓圈目前該不該在畫面上著燈繪製
                 let isTargetToShow = false;
-                if 
-                    (gameLevel === 1 && circle.id === currentTargetZoneLvl1) isTargetToShow = true;
+                if (gameLevel === 1 && circle.id === currentTargetZoneLvl1) isTargetToShow = true;
                 if (gameLevel === 2) isTargetToShow = true; // 終極版 8 圓同時亮
 
                 if (isTargetToShow) {
@@ -412,20 +403,17 @@
                     ctx.save();
                     if (isHit) {
                         // Level 2 已成功順序擊破的圓：保持黃金爆炸燈
-                        
                         ctx.beginPath();
                         ctx.arc(circle.x, circle.y, circle.radius * 1.06, 0, 2 * Math.PI);
                         ctx.fillStyle = 'rgba(255, 221, 0, 0.85)';
                         ctx.fill();
                
-                         ctx.strokeStyle = '#ffff00';
+                        ctx.strokeStyle = '#ffff00';
                         ctx.lineWidth = 6;
                         ctx.stroke();
                     } else {
                         // 進行像素碰撞即時核對
                         if (now < activeTimers[circle.id]) {
-                            
-                
                             if (gameLevel === 1) {
                                 // 【Level 1 答對判定】
                                 score += 10;
@@ -443,8 +431,7 @@
                                 // 0.8秒後換下一題
                             } else {
                                 // 【Level 2 絕對順序核對】
-                                if (circle.number 
-                                === nextExpectedNumber) {
+                                if (circle.number === nextExpectedNumber) {
                                     // 踩對順序！
                                     circle.isCleared = true;
                                     score += 10;
@@ -463,27 +450,21 @@
                                     } else {
                                         // 推進至下一個數字，重置 2 秒黃金線時間戳
                                         setTimeout(() => {
-     
-                                                   centerTaskText = `🔍 請尋找數字：${nextExpectedNumber}`;
+                                            centerTaskText = `🔍 請尋找數字：${nextExpectedNumber}`;
                                             centerTextColor = "#ffff00";
-            
                                             centerTextScale = 1.0;
                                             nextTaskTimestamp = Date.now() + targetLifeTime;
-                  
                                       }, 400);
                                     }
                                 } else {
                                     // 踩錯順序：低沉錯誤音
-                             
                                     if (!zoneStates[circle.id]) {
                                         zoneStates[circle.id] = true;
                                         playArcadeLaser(120, false);
                                     }
                                 }
                             }
-
                         } else {
-            
                                 zoneStates[circle.id] = false;
                         }
 
@@ -531,8 +512,7 @@
             // 5. 【去底色純透視】中央巨大動態題目字體
             ctx.save();
             ctx.translate(canvas.width * 0.5, canvas.height * 0.5);
-            ctx.scale(-1 * centerTextScale, 1 * centerTextScale);
-            // 答對膨脹
+            ctx.scale(-1 * centerTextScale, 1 * centerTextScale); // 答對膨脹
 
             ctx.fillStyle = centerTextColor;
             ctx.font = 'bold 36px Arial Black, system-ui, sans-serif';
