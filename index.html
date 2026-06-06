@@ -38,11 +38,11 @@
             border-radius: 50px; cursor: pointer; transition: all 0.3s ease; letter-spacing: 1px;
         }
         .btn-lvl1 {
-            background: linear-gradient(135deg, #00f0ff 0%, #00ff66 100%);
-            box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+            background: linear-gradient(135deg, #ff6600 0%, #ffcc00 100%);
+            box-shadow: 0 0 25px rgba(255, 102, 0, 0.4);
         }
         .btn-lvl1:hover { transform: scale(1.06);
-            box-shadow: 0 0 40px rgba(0, 255, 102, 0.7); }
+            box-shadow: 0 0 40px rgba(255, 204, 0, 0.7); }
         
         .btn-lvl2 {
             background: linear-gradient(135deg, #ff007f 0%, #7900ff 100%);
@@ -96,7 +96,7 @@
         <p style="color: #a0a5c0; font-size: 1.2rem; font-weight: bold; margin-bottom: 40px;">—— 跨世代免手持 1:1 鏡反射復康系統 ——</p>
         
         <div class="btn-container">
-            <button id="btn-level-1" class="start-btn btn-lvl1">Level 1: 輕鬆普通版<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(單個大圓圈・無數字・適合入門)</span></button>
+            <button id="btn-level-1" class="start-btn btn-lvl1">Level 1: 球類趣味版<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(單個球類目標・無數字・適合入門)</span></button>
             <button id="btn-level-2" class="start-btn btn-lvl2">Level 2: 終極順序流<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(8圓炸裂・數字1-8隨機洗牌連擊)</span></button>
         </div>
         
@@ -228,12 +228,11 @@
             osc.stop(now + (isCorrect ? 0.2 : 0.12));
         }
 
-        // 1:1 鏡像坐標映射（套用全球放大縮小率）
+        // 1:1 鏡像坐標映射
         function updateCirclesLayout() {
             const w = canvas.width;
             const h = canvas.height;
             
-            // 基礎半徑乘上用戶調整的 globalZoomScale 放大率
             const baseRadiusMultiplier = (gameLevel === 2) ? 0.076 : 0.12;
             const r = Math.min(w, h) * baseRadiusMultiplier * globalZoomScale;
             
@@ -259,6 +258,7 @@
                 while (currentTargetZoneLvl1 === lastZone) {
                     currentTargetZoneLvl1 = Math.floor(Math.random() * 8);
                 }
+                // 🔴 -> 🏀, 🟢 -> 🏐, 🔵 -> ⚽ (純圖標顯示)
                 const directionLabels = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
                 centerTaskText = `🎯 擊中：${directionLabels[currentTargetZoneLvl1]}`;
                 centerTextColor = "#ffff00";
@@ -284,17 +284,16 @@
         document.getElementById('btn-level-1').addEventListener('click', () => { idStartFlow(1); });
         document.getElementById('btn-level-2').addEventListener('click', () => { idStartFlow(2); });
 
-        // 📺 綁定放大縮小按鈕事件
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            globalZoomScale = Math.min(2.0, globalZoomScale + 0.1); // 最高放大至 2 倍
+            globalZoomScale = Math.min(2.0, globalZoomScale + 0.1);
             updateCirclesLayout();
         });
         document.getElementById('btn-zoom-out').addEventListener('click', () => {
-            globalZoomScale = Math.max(0.5, globalZoomScale - 0.1); // 最低縮小至 0.5 倍
+            globalZoomScale = Math.max(0.5, globalZoomScale - 0.1);
             updateCirclesLayout();
         });
         document.getElementById('btn-zoom-reset').addEventListener('click', () => {
-            globalZoomScale = 1.0; // 恢復預設 1.0
+            globalZoomScale = 1.0;
             updateCirclesLayout();
         });
 
@@ -386,6 +385,7 @@
                 }
             }
 
+            // 3. AI 霓虹節點追蹤（手部也配對上全新的籃球橘色調）
             if (latestPoses && latestPoses.length > 0) {
                 const pointsToDraw = [11, 12, 15, 16, 23, 24, 27, 28];
                 pointsToDraw.forEach(index => {
@@ -393,13 +393,15 @@
                     if (kp && kp.score > 0.4) {
                         ctx.beginPath();
                         ctx.arc(kp.x, kp.y, 13, 0, 2 * Math.PI);
-                        ctx.strokeStyle = (index === 15 || index === 16) ? '#ff007f' : '#00f0ff'; 
+                        // 15, 16 為手部節點，改為籃球橘色，其餘身體與足部改為高質感亮青色與白色
+                        ctx.strokeStyle = (index === 15 || index === 16) ? '#ff6600' : '#00f0ff'; 
                         ctx.lineWidth = 4;
                         ctx.stroke();
                     }
                 });
             }
 
+            // 4. 渲染 8 圓形與關卡邏輯判定
             circlesConfig.forEach((circle, i) => {
                 let isTargetToShow = false;
                 if (gameLevel === 1 && circle.id === currentTargetZoneLvl1) isTargetToShow = true;
@@ -464,15 +466,17 @@
 
                         ctx.beginPath();
                         ctx.arc(circle.x, circle.y, circle.radius, 0, 2 * Math.PI);
+                        
+                        // 🏀 籃球(手部) -> 橘色色調, 🏐 排球(側邊) -> 黃色色調, ⚽ 足球(腳部) -> 亮白灰色調
                         if (circle.type === 'hand') {
-                            ctx.fillStyle = 'rgba(255, 0, 127, 0.22)';
-                            ctx.strokeStyle = '#ff007f';
+                            ctx.fillStyle = 'rgba(255, 102, 0, 0.22)';
+                            ctx.strokeStyle = '#ff6600';
                         } else if (circle.type === 'side') {
-                            ctx.fillStyle = 'rgba(0, 255, 102, 0.22)';
-                            ctx.strokeStyle = '#00ff66';
+                            ctx.fillStyle = 'rgba(255, 204, 0, 0.22)';
+                            ctx.strokeStyle = '#ffcc00';
                         } else {
-                            ctx.fillStyle = 'rgba(0, 240, 255, 0.22)';
-                            ctx.strokeStyle = '#00f0ff';
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                            ctx.strokeStyle = '#ffffff';
                         }
                         ctx.fill();
                         ctx.lineWidth = 4; ctx.stroke();
@@ -482,7 +486,6 @@
                     ctx.scale(-1, 1);
                     ctx.fillStyle = isVisuallyActive ? '#000000' : '#ffffff';
                     
-                    // 根據縮放比率動態調整字體大小
                     const labelFontSize = Math.round(22 * globalZoomScale);
                     const numFontSize = Math.round(34 * globalZoomScale);
                     const subFontSize = Math.round(10 * globalZoomScale);
@@ -492,8 +495,9 @@
                     
                     if (gameLevel === 1) {
                         ctx.font = `bold ${labelFontSize}px system-ui, sans-serif`;
-                        const labels = ["左上方", "正上方", "右上方", "左 邊", "右 邊", "左下方", "正下方", "右下方"];
-                        ctx.fillText(labels[circle.id], 0, 0);
+                        // 直接顯示該位置對應的球類 Emoji
+                        const ballIcons = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
+                        ctx.fillText(ballIcons[circle.id], 0, 0);
                     } else if (gameLevel === 2 && !circle.isCleared) {
                         ctx.font = `bold ${numFontSize}px system-ui, sans-serif`;
                         ctx.fillText(circle.number, 0, -3 * globalZoomScale);
@@ -507,7 +511,7 @@
                 }
             });
 
-            // 5. 中央提示字體（也同樣乘上 globalZoomScale 控制大小）
+            // 5. 中央提示字體
             ctx.save();
             ctx.translate(canvas.width * 0.5, canvas.height * 0.5);
             ctx.scale(-1 * centerTextScale, 1 * centerTextScale);
