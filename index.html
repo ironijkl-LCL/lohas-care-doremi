@@ -56,10 +56,8 @@
             width: 100%; height: 100%; display: none; }
         #canvas-wrapper { position: relative; width: 100%;
             height: 100%; background: #000; }
-        video { display: none;
-            }
-        canvas { height: 100%; width: 100%; object-fit: contain; transform: scaleX(-1);
-            }
+        video { display: none; }
+        canvas { height: 100%; width: 100%; object-fit: contain; transform: scaleX(-1); }
 
         /* 頂部極簡計分板 */
         #hud-top {
@@ -71,6 +69,24 @@
             color: #00f0ff; font-weight: 900;
             text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 2px 2px #000;
         }
+
+        /* 📺 電視投影專用：右下角畫面縮放控制面板 */
+        #zoom-controls {
+            position: absolute;
+            bottom: 25px; right: 25px; z-index: 20;
+            display: flex; gap: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px; border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+        }
+        .zoom-btn {
+            background: #222; color: #fff; border: 1px solid #444;
+            padding: 10px 18px; font-size: 1rem; font-weight: bold;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .zoom-btn:hover { background: #00f0ff; color: #000; border-color: #00f0ff; }
+        .zoom-btn:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -81,7 +97,6 @@
         
         <div class="btn-container">
             <button id="btn-level-1" class="start-btn btn-lvl1">Level 1: 輕鬆普通版<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(單個大圓圈・無數字・適合入門)</span></button>
-          
             <button id="btn-level-2" class="start-btn btn-lvl2">Level 2: 終極順序流<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(8圓炸裂・數字1-8隨機洗牌連擊)</span></button>
         </div>
         
@@ -92,6 +107,13 @@
         <div id="hud-top">
             <p id="score-text">SCORE: <span id="score-val" style="color:#00ff66;">0</span></p>
         </div>
+
+        <div id="zoom-controls">
+            <button id="btn-zoom-in" class="zoom-btn">＋ 放大</button>
+            <button id="btn-zoom-out" class="zoom-btn">－ 縮小</button>
+            <button id="btn-zoom-reset" class="zoom-btn">🔄 預設</button>
+        </div>
+
         <div id="canvas-wrapper">
             <video id="webcam" autoplay playsinline muted></video>
             <canvas id="output-canvas"></canvas>
@@ -114,16 +136,13 @@
         let latestPoses = [];
         // --- 關卡核心控制變數 ---
         let gameLevel = 1;
-        // 1: 普通版, 2: 終極順序流
         let nextExpectedNumber = 1;
-        // 目前 Level 2 大腦尋找的目標 (1~8)
         let targetLifeTime = 2000;
-        // 2秒黃金催促時間限制
         let nextTaskTimestamp = 0;
-        // 超時重置時間戳
-        
         let currentTargetZoneLvl1 = -1;
-        // Level 1 目前亮燈的唯一圓圈索引
+
+        // --- 📺 放大鏡控制倍率變數 ---
+        let globalZoomScale = 1.0; 
 
         // 中央去底色大字
         let centerTaskText = "預備！雙手雙腳就位";
@@ -132,13 +151,13 @@
 
         // 像素動態對比
         let lastFrameData = null;
-        // 8圓防閃爍維持機制
         let zoneStates = new Array(8).fill(false); 
         let activeTimers = new Array(8).fill(0);
         const HOLD_DURATION = 350; 
 
         const baseFrequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
         let circlesConfig = [];
+
         // --- 🎵 雙軌重低音快板電音引擎 ---
         function initAudio() {
             if (!audioCtx) {
@@ -153,12 +172,8 @@
             function playNextBeat() {
                 if (!isRunning) return;
                 const time = audioCtx.currentTime;
-                
-                // Level 2 速度會隨得分無限變快，Level 1 保持穩定的動感快板
-                const baseTempo = (gameLevel === 2) ?
-                    220 : 300;
+                const baseTempo = (gameLevel === 2) ? 220 : 300;
                 const tempoSpeed = Math.max(110, baseTempo - ((score / 10) * 3.5));
-                // 低音炮 (Kick)
                 if (beatCount % 2 === 0) {
                     const kickOsc = audioCtx.createOscillator();
                     const kickGain = audioCtx.createGain();
@@ -173,7 +188,6 @@
                     kickOsc.stop(time + 0.11);
                 }
 
-                // 高頻擦片 (Hi-Hat)
                 const hatOsc = audioCtx.createOscillator();
                 const hatGain = audioCtx.createGain();
                 hatOsc.type = 'triangle';
@@ -204,7 +218,7 @@
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             } else {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, now); // 低沉錯誤洗牌音
+                osc.frequency.setValueAtTime(140, now);
                 gain.gain.setValueAtTime(0.15, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
             }
@@ -214,15 +228,15 @@
             osc.stop(now + (isCorrect ? 0.2 : 0.12));
         }
 
-        // 1:1 鏡像坐標映射
+        // 1:1 鏡像坐標映射（套用全球放大縮小率）
         function updateCirclesLayout() {
             const w = canvas.width;
             const h = canvas.height;
             
-            // Level 2 採用縮小 35% 的精準圓(0.076)，Level 1 採用好拍的大圓(0.12)
-            const radiusMultiplier = (gameLevel === 2) ?
-                0.076 : 0.12;
-            const r = Math.min(w, h) * radiusMultiplier;
+            // 基礎半徑乘上用戶調整的 globalZoomScale 放大率
+            const baseRadiusMultiplier = (gameLevel === 2) ? 0.076 : 0.12;
+            const r = Math.min(w, h) * baseRadiusMultiplier * globalZoomScale;
+            
             const cx = [w * 0.85, w * 0.5, w * 0.15];
             const cy = [h * 0.20, h * 0.5, h * 0.80];
             circlesConfig = [
@@ -241,20 +255,16 @@
         function generateNewChallenge() {
             const now = Date.now();
             if (gameLevel === 1) {
-                // 【Level 1: 輕鬆普通版出題】
                 const lastZone = currentTargetZoneLvl1;
                 while (currentTargetZoneLvl1 === lastZone) {
                     currentTargetZoneLvl1 = Math.floor(Math.random() * 8);
                 }
-                // 移除文字顯示，並將 🔴->🏀, 🟢->🏐, 🔵->⚽
                 const directionLabels = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
                 centerTaskText = `🎯 擊中：${directionLabels[currentTargetZoneLvl1]}`;
                 centerTextColor = "#ffff00";
                 centerTextScale = 1.0;
-                // 普通版不設 2 秒超時限制
                 nextTaskTimestamp = now + 99999999;
             } else {
-                // 【Level 2: 終極 8 圓順序流出題 (1-8隨機大洗牌)】
                 const numbers = [1, 2, 3, 4, 5, 6, 7, 8];
                 for (let i = numbers.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -267,14 +277,26 @@
                 centerTaskText = `🔍 請尋找數字：${nextExpectedNumber}`;
                 centerTextColor = "#ffff00";
                 centerTextScale = 1.0;
-                // 鎖定 2 秒黃金催促線
                 nextTaskTimestamp = now + targetLifeTime;
             }
         }
 
-        // 綁定雙關卡按鈕啟動異步流程
         document.getElementById('btn-level-1').addEventListener('click', () => { idStartFlow(1); });
         document.getElementById('btn-level-2').addEventListener('click', () => { idStartFlow(2); });
+
+        // 📺 綁定放大縮小按鈕事件
+        document.getElementById('btn-zoom-in').addEventListener('click', () => {
+            globalZoomScale = Math.min(2.0, globalZoomScale + 0.1); // 最高放大至 2 倍
+            updateCirclesLayout();
+        });
+        document.getElementById('btn-zoom-out').addEventListener('click', () => {
+            globalZoomScale = Math.max(0.5, globalZoomScale - 0.1); // 最低縮小至 0.5 倍
+            updateCirclesLayout();
+        });
+        document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+            globalZoomScale = 1.0; // 恢復預設 1.0
+            updateCirclesLayout();
+        });
 
         async function idStartFlow(selectedLevel) {
             gameLevel = selectedLevel;
@@ -320,19 +342,14 @@
             if (!isRunning) return;
             const now = Date.now();
 
-            // 【Level 2 專屬：2秒超時大洗牌機制】
             if (gameLevel === 2 && now > nextTaskTimestamp) {
                 playArcadeLaser(100, false);
-                // 播放洗牌低音
                 generateNewChallenge();
-                // 瞬間大洗牌！
             }
 
-            // 1. 畫出原始鏡頭
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 2. 圓形動態像素感應（按關卡過濾掃描區域）
             const currentFrameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             let motionCounter = new Array(8).fill(0);
 
@@ -340,16 +357,13 @@
                 for (let y = 0; y < canvas.height; y += 4) {
                     for (let x = 0; x < canvas.width; x += 4) {
                         circlesConfig.forEach((circle, idx) => {
-                            // 像素感應過濾條件
                             let shouldScan = false;
-                    
-                            if (gameLevel === 1 && idx === currentTargetZoneLvl1) shouldScan = true; // 只有目標著燈
-                            if (gameLevel === 2 && !circle.isCleared) shouldScan = true;            // 全場未清空圓
+                            if (gameLevel === 1 && idx === currentTargetZoneLvl1) shouldScan = true;
+                            if (gameLevel === 2 && !circle.isCleared) shouldScan = true;
 
                             if (shouldScan) {
                                 const dx = x - circle.x;
                                 const dy = y - circle.y;
-                           
                                 if (dx * dx + dy * dy < circle.radius * circle.radius) {
                                     const i = (y * canvas.width + x) * 4;
                                     const diffR = Math.abs(currentFrameData.data[i] - lastFrameData.data[i]);
@@ -363,7 +377,7 @@
                 }
             }
             lastFrameData = currentFrameData;
-            // 檢查像素踩中
+
             for (let i = 0; i < 8; i++) {
                 const isValidTrigger = (gameLevel === 1 && i === currentTargetZoneLvl1) ||
                     (gameLevel === 2 && !circlesConfig[i].isCleared);
@@ -372,7 +386,6 @@
                 }
             }
 
-            // 3. 畫出人類手腳 AI 霓虹追蹤點
             if (latestPoses && latestPoses.length > 0) {
                 const pointsToDraw = [11, 12, 15, 16, 23, 24, 27, 28];
                 pointsToDraw.forEach(index => {
@@ -387,68 +400,50 @@
                 });
             }
 
-            // 4. 渲染 8 圓形與關卡邏輯判定
             circlesConfig.forEach((circle, i) => {
-                
-                // 決定這個圓圈目前該不該在畫面上著燈繪製
                 let isTargetToShow = false;
                 if (gameLevel === 1 && circle.id === currentTargetZoneLvl1) isTargetToShow = true;
-                if (gameLevel === 2) isTargetToShow = true; // 終極版 8 圓同時亮
+                if (gameLevel === 2) isTargetToShow = true;
 
                 if (isTargetToShow) {
                     const isHit = (gameLevel === 2 && circle.isCleared);
-                    
                     const isVisuallyActive = now < activeTimers[circle.id] || isHit;
 
                     ctx.save();
                     if (isHit) {
-                        // Level 2 已成功順序擊破的圓：保持黃金爆炸燈
                         ctx.beginPath();
                         ctx.arc(circle.x, circle.y, circle.radius * 1.06, 0, 2 * Math.PI);
                         ctx.fillStyle = 'rgba(255, 221, 0, 0.85)';
                         ctx.fill();
-               
                         ctx.strokeStyle = '#ffff00';
                         ctx.lineWidth = 6;
                         ctx.stroke();
                     } else {
-                        // 進行像素碰撞即時核對
                         if (now < activeTimers[circle.id]) {
                             if (gameLevel === 1) {
-                                // 【Level 1 答對判定】
                                 score += 10;
                                 scoreVal.innerText = score;
                                 playArcadeLaser(baseFrequencies[circle.id], true);
-                                
                                 centerTaskText = "🌟 完美擊中！";
                                 centerTextColor = "#00ff66";
                                 centerTextScale = 1.5;
-                                // 激增放大 1.5 倍
-                                
                                 currentTargetZoneLvl1 = -1;
-                                // 清空目標
                                 setTimeout(generateNewChallenge, 800);
-                                // 0.8秒後換下一題
                             } else {
-                                // 【Level 2 絕對順序核對】
                                 if (circle.number === nextExpectedNumber) {
-                                    // 踩對順序！
                                     circle.isCleared = true;
                                     score += 10;
                                     scoreVal.innerText = score;
                                     playArcadeLaser(baseFrequencies[circle.id], true);
-                                    
                                     centerTaskText = `🌟 完美擊中：${nextExpectedNumber}！`;
                                     centerTextColor = "#00ff66";
                                     centerTextScale = 1.5;
-
                                     nextExpectedNumber++;
                                     if (nextExpectedNumber > 8) {
                                         nextExpectedNumber = 1;
                                         centerTaskText = "🔥 1-8 全連擊清場爆裂！ 🔥";
                                         setTimeout(generateNewChallenge, 800); 
                                     } else {
-                                        // 推進至下一個數字，重置 2 秒黃金線時間戳
                                         setTimeout(() => {
                                             centerTaskText = `🔍 請尋找數字：${nextExpectedNumber}`;
                                             centerTextColor = "#ffff00";
@@ -457,7 +452,6 @@
                                       }, 400);
                                     }
                                 } else {
-                                    // 踩錯順序：低沉錯誤音
                                     if (!zoneStates[circle.id]) {
                                         zoneStates[circle.id] = true;
                                         playArcadeLaser(120, false);
@@ -465,10 +459,9 @@
                                 }
                             }
                         } else {
-                                zoneStates[circle.id] = false;
+                            zoneStates[circle.id] = false;
                         }
 
-                        // 正常畫出未擊破的霓虹圓圈
                         ctx.beginPath();
                         ctx.arc(circle.x, circle.y, circle.radius, 0, 2 * Math.PI);
                         if (circle.type === 'hand') {
@@ -485,42 +478,48 @@
                         ctx.lineWidth = 4; ctx.stroke();
                     }
 
-                    // 繪製圓圈內文字/數字（配合鏡像轉正）
                     ctx.translate(circle.x, circle.y);
                     ctx.scale(-1, 1);
                     ctx.fillStyle = isVisuallyActive ? '#000000' : '#ffffff';
-                    ctx.font = 'bold 22px system-ui, sans-serif';
+                    
+                    // 根據縮放比率動態調整字體大小
+                    const labelFontSize = Math.round(22 * globalZoomScale);
+                    const numFontSize = Math.round(34 * globalZoomScale);
+                    const subFontSize = Math.round(10 * globalZoomScale);
+
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     
                     if (gameLevel === 1) {
+                        ctx.font = `bold ${labelFontSize}px system-ui, sans-serif`;
                         const labels = ["左上方", "正上方", "右上方", "左 邊", "右 邊", "左下方", "正下方", "右下方"];
                         ctx.fillText(labels[circle.id], 0, 0);
                     } else if (gameLevel === 2 && !circle.isCleared) {
-                        // Level 2 畫出大字隨機數字
-                        ctx.font = 'bold 34px system-ui, sans-serif';
-                        ctx.fillText(circle.number, 0, -3);
-                        ctx.font = 'bold 10px system-ui';
+                        ctx.font = `bold ${numFontSize}px system-ui, sans-serif`;
+                        ctx.fillText(circle.number, 0, -3 * globalZoomScale);
+                        ctx.font = `bold ${subFontSize}px system-ui`;
                         ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                        ctx.fillText(circle.labelName, 0, 20);
+                        ctx.fillText(circle.labelName, 0, 20 * globalZoomScale);
                     }
                     ctx.restore();
                 } else {
                     zoneStates[circle.id] = false;
                 }
             });
-            // 5. 【去底色純透視】中央巨大動態題目字體
+
+            // 5. 中央提示字體（也同樣乘上 globalZoomScale 控制大小）
             ctx.save();
             ctx.translate(canvas.width * 0.5, canvas.height * 0.5);
-            ctx.scale(-1 * centerTextScale, 1 * centerTextScale); // 答對膨脹
+            ctx.scale(-1 * centerTextScale, 1 * centerTextScale);
 
             ctx.fillStyle = centerTextColor;
-            ctx.font = 'bold 36px Arial Black, system-ui, sans-serif';
+            const centerFontSize = Math.round(36 * globalZoomScale);
+            ctx.font = `bold ${centerFontSize}px Arial Black, system-ui, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-            ctx.lineWidth = 8;
+            ctx.lineWidth = Math.round(8 * globalZoomScale);
             ctx.strokeText(centerTaskText, 0, 0);
             ctx.fillText(centerTaskText, 0, 0);
             ctx.restore();
