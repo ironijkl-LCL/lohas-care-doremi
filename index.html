@@ -109,8 +109,8 @@
         </div>
 
         <div id="zoom-controls">
-            <button id="btn-zoom-in" class="zoom-btn">＋ 放大</button>
-            <button id="btn-zoom-out" class="zoom-btn">－ 縮小</button>
+            <button id="btn-zoom-in" class="zoom-btn">＋ 放大球體</button>
+            <button id="btn-zoom-out" class="zoom-btn">－ 縮小球體</button>
             <button id="btn-zoom-reset" class="zoom-btn">🔄 預設</button>
         </div>
 
@@ -233,6 +233,7 @@
             const w = canvas.width;
             const h = canvas.height;
             
+            // 由於不畫外框，這裡的 radius 純粹用來當作肢體碰撞判定範圍
             const baseRadiusMultiplier = (gameLevel === 2) ? 0.076 : 0.12;
             const r = Math.min(w, h) * baseRadiusMultiplier * globalZoomScale;
             
@@ -258,7 +259,6 @@
                 while (currentTargetZoneLvl1 === lastZone) {
                     currentTargetZoneLvl1 = Math.floor(Math.random() * 8);
                 }
-                // 🔴 -> 🏀, 🟢 -> 🏐, 🔵 -> ⚽ (純圖標顯示)
                 const directionLabels = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
                 centerTaskText = `🎯 擊中：${directionLabels[currentTargetZoneLvl1]}`;
                 centerTextColor = "#ffff00";
@@ -285,11 +285,11 @@
         document.getElementById('btn-level-2').addEventListener('click', () => { idStartFlow(2); });
 
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            globalZoomScale = Math.min(2.0, globalZoomScale + 0.1);
+            globalZoomScale = Math.min(2.5, globalZoomScale + 0.15); // 微調放大感
             updateCirclesLayout();
         });
         document.getElementById('btn-zoom-out').addEventListener('click', () => {
-            globalZoomScale = Math.max(0.5, globalZoomScale - 0.1);
+            globalZoomScale = Math.max(0.5, globalZoomScale - 0.15);
             updateCirclesLayout();
         });
         document.getElementById('btn-zoom-reset').addEventListener('click', () => {
@@ -385,7 +385,6 @@
                 }
             }
 
-            // 3. AI 霓虹節點追蹤（手部也配對上全新的籃球橘色調）
             if (latestPoses && latestPoses.length > 0) {
                 const pointsToDraw = [11, 12, 15, 16, 23, 24, 27, 28];
                 pointsToDraw.forEach(index => {
@@ -393,7 +392,6 @@
                     if (kp && kp.score > 0.4) {
                         ctx.beginPath();
                         ctx.arc(kp.x, kp.y, 13, 0, 2 * Math.PI);
-                        // 15, 16 為手部節點，改為籃球橘色，其餘身體與足部改為高質感亮青色與白色
                         ctx.strokeStyle = (index === 15 || index === 16) ? '#ff6600' : '#00f0ff'; 
                         ctx.lineWidth = 4;
                         ctx.stroke();
@@ -401,7 +399,6 @@
                 });
             }
 
-            // 4. 渲染 8 圓形與關卡邏輯判定
             circlesConfig.forEach((circle, i) => {
                 let isTargetToShow = false;
                 if (gameLevel === 1 && circle.id === currentTargetZoneLvl1) isTargetToShow = true;
@@ -413,13 +410,11 @@
 
                     ctx.save();
                     if (isHit) {
+                        // Level 2 擊破效果：保留淡淡的黃金命中光暈提示
                         ctx.beginPath();
                         ctx.arc(circle.x, circle.y, circle.radius * 1.06, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'rgba(255, 221, 0, 0.85)';
+                        ctx.fillStyle = 'rgba(255, 221, 0, 0.4)';
                         ctx.fill();
-                        ctx.strokeStyle = '#ffff00';
-                        ctx.lineWidth = 6;
-                        ctx.stroke();
                     } else {
                         if (now < activeTimers[circle.id]) {
                             if (gameLevel === 1) {
@@ -464,29 +459,16 @@
                             zoneStates[circle.id] = false;
                         }
 
-                        ctx.beginPath();
-                        ctx.arc(circle.x, circle.y, circle.radius, 0, 2 * Math.PI);
-                        
-                        // 🏀 籃球(手部) -> 橘色色調, 🏐 排球(側邊) -> 黃色色調, ⚽ 足球(腳部) -> 亮白灰色調
-                        if (circle.type === 'hand') {
-                            ctx.fillStyle = 'rgba(255, 102, 0, 0.22)';
-                            ctx.strokeStyle = '#ff6600';
-                        } else if (circle.type === 'side') {
-                            ctx.fillStyle = 'rgba(255, 204, 0, 0.22)';
-                            ctx.strokeStyle = '#ffcc00';
-                        } else {
-                            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-                            ctx.strokeStyle = '#ffffff';
-                        }
-                        ctx.fill();
-                        ctx.lineWidth = 4; ctx.stroke();
+                        // 💡 【核心修改】這裡完全不呼叫 ctx.fill() 和 ctx.stroke()！
+                        // 圓圈的外框和背景顏色直接「不畫出來」，達成「唔駛包住個球」的純淨視覺。
                     }
 
                     ctx.translate(circle.x, circle.y);
                     ctx.scale(-1, 1);
-                    ctx.fillStyle = isVisuallyActive ? '#000000' : '#ffffff';
+                    ctx.fillStyle = '#ffffff'; 
                     
-                    const labelFontSize = Math.round(22 * globalZoomScale);
+                    // 大幅放大 Level 1 的球體 Emoji 尺寸（基礎設定為 55 像素，再乘上放大率）
+                    const ballFontSize = Math.round(55 * globalZoomScale);
                     const numFontSize = Math.round(34 * globalZoomScale);
                     const subFontSize = Math.round(10 * globalZoomScale);
 
@@ -494,12 +476,13 @@
                     ctx.textBaseline = 'middle';
                     
                     if (gameLevel === 1) {
-                        ctx.font = `bold ${labelFontSize}px system-ui, sans-serif`;
-                        // 直接顯示該位置對應的球類 Emoji
+                        ctx.font = `${ballFontSize}px system-ui`;
                         const ballIcons = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
                         ctx.fillText(ballIcons[circle.id], 0, 0);
                     } else if (gameLevel === 2 && !circle.isCleared) {
+                        // Level 2 保留數字顯示供順序流訓練
                         ctx.font = `bold ${numFontSize}px system-ui, sans-serif`;
+                        ctx.fillStyle = isVisuallyActive ? '#00ff66' : '#ffffff';
                         ctx.fillText(circle.number, 0, -3 * globalZoomScale);
                         ctx.font = `bold ${subFontSize}px system-ui`;
                         ctx.fillStyle = 'rgba(255,255,255,0.6)';
