@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>巨型AR體感復康牆</title>
+    <title>AR 全方位肢體體感牆 | Apple Style Edition</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.2.0/dist/tf-core.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.2.0/dist/tf-converter.min.js"></script>
@@ -11,101 +11,256 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
     <style>
-        * { box-sizing: border-box;
-            user-select: none; margin: 0; padding: 0; }
-        body {
-            background: #000;
-            color: #fff;
-            font-family: 'Arial Black', system-ui, -apple-system, sans-serif; overflow: hidden;
-            height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
+        /* --- Apple 視覺規範與 Oasis 色調變數 --- */
+        :root {
+            --apple-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            --oasis-bg: radial-gradient(circle at 50% 50%, #161b26 0%, #070a0f 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f5f5f7;
+            --text-secondary: #86868b;
+            --apple-blue: #0071e3;
+            --apple-green: #34c759;
+            --apple-orange: #ff453a;
+            --apple-purple: #bf5af2;
         }
 
-        /* --- 歡迎與 Level 選擇畫面 --- */
+        * { 
+            box-sizing: border-box;
+            user-select: none; 
+            margin: 0; 
+            padding: 0; 
+        }
+
+        body {
+            background: #000;
+            color: var(--text-primary);
+            font-family: var(--apple-font); 
+            overflow: hidden;
+            height: 100vh; 
+            width: 100vw; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- 歡迎與 Level 選擇畫面 (Apple 門市展演質感) --- */
         #welcome-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, #111422 0%, #000000 100%);
-            z-index: 100; display: flex;
-            flex-direction: column; justify-content: center; align-items: center; padding: 20px;
+            background: var(--oasis-bg);
+            z-index: 100; 
+            display: flex;
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 40px;
         }
+
+        .welcome-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            padding: 60px 80px;
+            border-radius: 28px;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+            max-width: 850px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 3.2rem; 
+            font-weight: 700;
+            color: var(--text-primary); 
+            margin-bottom: 12px; 
+            letter-spacing: -0.03em;
+            background: linear-gradient(180deg, #ffffff 0%, #d2d2d7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--apple-blue); 
+            font-size: 1.15rem; 
+            font-weight: 500; 
+            margin-bottom: 48px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
         .btn-container {
             display: flex;
-            gap: 30px; margin-top: 20px;
+            gap: 24px; 
+            margin-top: 20px;
+            width: 100%;
+            justify-content: center;
         }
+
+        /* Apple 風格精緻微光按鈕 */
         .start-btn {
             color: white;
-            border: none; padding: 22px 45px; font-size: 1.4rem; font-weight: 900;
-            border-radius: 50px; cursor: pointer; transition: all 0.3s ease; letter-spacing: 1px;
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 24px 36px; 
+            font-size: 1.25rem; 
+            font-weight: 600;
+            border-radius: 18px; 
+            cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+            letter-spacing: -0.01em;
+            flex: 1;
+            max-width: 340px;
+            text-align: center;
         }
+
         .btn-lvl1 {
-            background: linear-gradient(135deg, #ff6600 0%, #ffcc00 100%);
-            box-shadow: 0 0 25px rgba(255, 102, 0, 0.4);
+            background: linear-gradient(135deg, rgba(255, 102, 0, 0.75) 0%, rgba(255, 204, 0, 0.65) 100%);
+            box-shadow: 0 4px 15px rgba(255, 102, 0, 0.2);
         }
-        .btn-lvl1:hover { transform: scale(1.06);
-            box-shadow: 0 0 40px rgba(255, 204, 0, 0.7); }
+        .btn-lvl1:hover { 
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(255, 153, 0, 0.4); 
+            border-color: rgba(255, 255, 255, 0.3);
+        }
         
         .btn-lvl2 {
-            background: linear-gradient(135deg, #ff007f 0%, #7900ff 100%);
-            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            background: linear-gradient(135deg, rgba(191, 90, 242, 0.75) 0%, rgba(255, 45, 85, 0.65) 100%);
+            box-shadow: 0 4px 15px rgba(191, 90, 242, 0.2);
         }
-        .btn-lvl2:hover { transform: scale(1.06);
-            box-shadow: 0 0 40px rgba(255, 0, 127, 0.7); }
+        .btn-lvl2:hover { 
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(255, 45, 85, 0.4);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
 
-        /* 遊戲核心版面 */
-        #game-container { position: relative;
-            width: 100%; height: 100%; display: none; }
-        #canvas-wrapper { position: relative; width: 100%;
-            height: 100%; background: #000; }
+        .btn-desc {
+            display: block;
+            font-size: 0.85rem; 
+            font-weight: 400; 
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 6px;
+        }
+
+        #status-text { 
+            margin-top: 40px; 
+            font-size: 0.95rem; 
+            color: var(--text-secondary); 
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+
+        /* 遊戲核心主版面 */
+        #game-container { 
+            position: relative;
+            width: 100%; 
+            height: 100%; 
+            display: none; 
+        }
+        
+        #canvas-wrapper { 
+            position: relative; 
+            width: 100%;
+            height: 100%; 
+            background: #000; 
+        }
+        
         video { display: none; }
-        canvas { height: 100%; width: 100%; object-fit: contain; transform: scaleX(-1); }
+        
+        canvas { 
+            height: 100%; 
+            width: 100%; 
+            object-fit: contain; 
+            transform: scaleX(-1);
+        }
 
-        /* 頂部極簡計分板 */
+        /* 頂部懸浮毛玻璃計分板 */
         #hud-top {
             position: absolute;
-            top: 25px; right: 25px; z-index: 10; pointer-events: none;
+            top: 30px; 
+            right: 30px; 
+            z-index: 10; 
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 14px 28px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        
         #score-text { 
-            font-size: 1.8rem;
-            color: #00f0ff; font-weight: 900;
-            text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 2px 2px #000;
+            font-size: 1.3rem;
+            color: var(--text-primary); 
+            font-weight: 600;
+            letter-spacing: 0.02em;
         }
 
-        /* 📺 電視投影專用：右下角畫面縮放控制面板 */
+        /* 📺 電視投影專用：右下角毛玻璃畫面縮放控制面板 */
         #zoom-controls {
             position: absolute;
-            bottom: 25px; right: 25px; z-index: 20;
-            display: flex; gap: 12px;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 10px 15px; border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(5px);
+            bottom: 30px; 
+            right: 30px; 
+            z-index: 20;
+            display: flex; 
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 12px 18px; 
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        
         .zoom-btn {
-            background: #222; color: #fff; border: 1px solid #444;
-            padding: 10px 18px; font-size: 1rem; font-weight: bold;
-            border-radius: 8px; cursor: pointer; transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary); 
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 10px 18px; 
+            font-size: 0.95rem; 
+            font-weight: 500;
+            border-radius: 10px; 
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
         }
-        .zoom-btn:hover { background: #00f0ff; color: #000; border-color: #00f0ff; }
-        .zoom-btn:active { transform: scale(0.95); }
+        
+        .zoom-btn:hover { 
+            background: var(--text-primary); 
+            color: #000; 
+            border-color: var(--text-primary);
+        }
+        
+        .zoom-btn:active { 
+            transform: scale(0.96);
+        }
     </style>
 </head>
 <body>
 
     <div id="welcome-screen">
-        <h1 style="font-size: 3rem; color: #00f0ff; margin-bottom: 10px; text-shadow: 0 0 20px rgba(0,240,255,0.6); letter-spacing: 2px;">🔮 AR 全方位肢體體感牆 🔮</h1>
-        <p style="color: #a0a5c0; font-size: 1.2rem; font-weight: bold; margin-bottom: 40px;">—— 跨世代免手持 1:1 鏡反射復康系統 ——</p>
-        
-        <div class="btn-container">
-            <button id="btn-level-1" class="start-btn btn-lvl1">Level 1: 球類趣味版<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(單個球類目標・無數字・適合入門)</span></button>
-            <button id="btn-level-2" class="start-btn btn-lvl2">Level 2: 終極順序流<br><span style="font-size:0.9rem; font-weight:normal; color:#fff;">(8圓炸裂・數字1-8隨機洗牌連擊)</span></button>
+        <div class="welcome-card">
+            <h1>🔮 AR 全方位肢體體感牆</h1>
+            <p class="subtitle">—— 跨世代免手持 1:1 鏡反射復康系統 ——</p>
+            
+            <div class="btn-container">
+                <button id="btn-level-1" class="start-btn btn-lvl1">
+                    Level 1: 球類趣味版
+                    <span class="btn-desc">(單個球類目標・無數字・適合入門)</span>
+                </button>
+                <button id="btn-level-2" class="start-btn btn-lvl2">
+                    Level 2: 終極順序流
+                    <span class="btn-desc">(8圓炸裂・數字1-8隨機洗牌連擊)</span>
+                </button>
+            </div>
+            
+            <div id="status-text">請選擇關卡開始訓練（點擊將自動開啟鏡頭與音樂合成器）</div>
         </div>
-        
-        <div id="status-text" style="margin-top: 40px; font-size: 1rem; color: #ff007f; font-weight:bold;">請選擇關卡開始訓練（點擊將自動開啟鏡頭與音樂合成器）</div>
     </div>
 
     <div id="game-container">
         <div id="hud-top">
-            <p id="score-text">SCORE: <span id="score-val" style="color:#00ff66;">0</span></p>
+            <p id="score-text">SCORE <span id="score-val" style="color: var(--apple-green); margin-left: 8px;">0</span></p>
         </div>
 
         <div id="zoom-controls">
@@ -121,6 +276,7 @@
     </div>
 
     <script>
+        // --- 核心控制與引擎變數 ---
         const welcomeScreen = document.getElementById('welcome-screen');
         const gameContainer = document.getElementById('game-container');
         const video = document.getElementById('webcam');
@@ -134,31 +290,28 @@
         let isRunning = false;
         let score = 0;
         let latestPoses = [];
-        // --- 關卡核心控制變數 ---
+        
         let gameLevel = 1;
         let nextExpectedNumber = 1;
         let targetLifeTime = 2000;
         let nextTaskTimestamp = 0;
         let currentTargetZoneLvl1 = -1;
+        
+        let globalZoomScale = 1.0; // 📺 放大鏡控制倍率變數
 
-        // --- 📺 放大鏡控制倍率變數 ---
-        let globalZoomScale = 1.0; 
-
-        // 中央去底色大字
         let centerTaskText = "預備！雙手雙腳就位";
-        let centerTextColor = "#ffff00";
+        let centerTextColor = "#f5f5f7"; // 高級純淨白底色
         let centerTextScale = 1.0; 
 
-        // 像素動態對比
         let lastFrameData = null;
         let zoneStates = new Array(8).fill(false); 
         let activeTimers = new Array(8).fill(0);
-        const HOLD_DURATION = 350; 
-
+        const HOLD_DURATION = 350;
+        
         const baseFrequencies = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
         let circlesConfig = [];
 
-        // --- 🎵 雙軌重低音快板電音引擎 ---
+        // 🎵 雙軌重低音快板電音引擎
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -174,13 +327,14 @@
                 const time = audioCtx.currentTime;
                 const baseTempo = (gameLevel === 2) ? 220 : 300;
                 const tempoSpeed = Math.max(110, baseTempo - ((score / 10) * 3.5));
+
                 if (beatCount % 2 === 0) {
                     const kickOsc = audioCtx.createOscillator();
                     const kickGain = audioCtx.createGain();
                     kickOsc.type = 'sine';
                     kickOsc.frequency.setValueAtTime(gameLevel === 2 ? 95 : 85, time);
                     kickOsc.frequency.exponentialRampToValueAtTime(33, time + 0.1);
-                    kickGain.gain.setValueAtTime(0.25, time); 
+                    kickGain.gain.setValueAtTime(0.20, time); 
                     kickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.11);
                     kickOsc.connect(kickGain);
                     kickGain.connect(audioCtx.destination);
@@ -192,7 +346,7 @@
                 const hatGain = audioCtx.createGain();
                 hatOsc.type = 'triangle';
                 hatOsc.frequency.setValueAtTime(6500 + (beatCount % 4 * 400), time);
-                hatGain.gain.setValueAtTime(0.04, time);
+                hatGain.gain.setValueAtTime(0.03, time);
                 hatGain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
                 hatOsc.connect(hatGain);
                 hatGain.connect(audioCtx.destination);
@@ -213,12 +367,12 @@
             if (isCorrect) {
                 osc.type = 'sawtooth';
                 osc.frequency.setValueAtTime(freq, now);
-                osc.frequency.exponentialRampToValueAtTime(freq * 3.0, now + 0.2);
-                gain.gain.setValueAtTime(0.25, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 2.5, now + 0.2);
+                gain.gain.setValueAtTime(0.20, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             } else {
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.setValueAtTime(130, now);
                 gain.gain.setValueAtTime(0.15, now);
                 gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
             }
@@ -228,17 +382,16 @@
             osc.stop(now + (isCorrect ? 0.2 : 0.12));
         }
 
-        // 1:1 鏡像坐標映射
+        // 1:1 鏡像坐標映射 (集成縮放比率計算)
         function updateCirclesLayout() {
             const w = canvas.width;
             const h = canvas.height;
             
-            // 由於不畫外框，這裡的 radius 純粹用來當作肢體碰撞判定範圍
             const baseRadiusMultiplier = (gameLevel === 2) ? 0.076 : 0.12;
             const r = Math.min(w, h) * baseRadiusMultiplier * globalZoomScale;
-            
             const cx = [w * 0.85, w * 0.5, w * 0.15];
             const cy = [h * 0.20, h * 0.5, h * 0.80];
+
             circlesConfig = [
                 { id: 0, labelName: "左上方", x: cx[0], y: cy[0], radius: r, type: 'hand', number: 0, isCleared: false },
                 { id: 1, labelName: "正上方", x: cx[1], y: cy[0], radius: r, type: 'hand', number: 0, isCleared: false },
@@ -251,7 +404,7 @@
             ];
         }
 
-        // --- 🧠 核心關卡任務調度器 ---
+        // --- 核心關卡任務調度器 ---
         function generateNewChallenge() {
             const now = Date.now();
             if (gameLevel === 1) {
@@ -260,8 +413,8 @@
                     currentTargetZoneLvl1 = Math.floor(Math.random() * 8);
                 }
                 const directionLabels = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
-                centerTaskText = `🎯 擊中：${directionLabels[currentTargetZoneLvl1]}`;
-                centerTextColor = "#ffff00";
+                centerTaskText = `請擊中：${directionLabels[currentTargetZoneLvl1]}`;
+                centerTextColor = "#0071e3"; // Apple 經典藍
                 centerTextScale = 1.0;
                 nextTaskTimestamp = now + 99999999;
             } else {
@@ -274,18 +427,19 @@
                     circle.number = numbers[idx];
                     circle.isCleared = false;
                 });
-                centerTaskText = `🔍 請尋找數字：${nextExpectedNumber}`;
-                centerTextColor = "#ffff00";
+                centerTaskText = `請尋找數字：${nextExpectedNumber}`;
+                centerTextColor = "#bf5af2"; // 高級紫色流
                 centerTextScale = 1.0;
                 nextTaskTimestamp = now + targetLifeTime;
             }
         }
 
+        // 綁定控制項
         document.getElementById('btn-level-1').addEventListener('click', () => { idStartFlow(1); });
         document.getElementById('btn-level-2').addEventListener('click', () => { idStartFlow(2); });
 
         document.getElementById('btn-zoom-in').addEventListener('click', () => {
-            globalZoomScale = Math.min(2.5, globalZoomScale + 0.15); // 微調放大感
+            globalZoomScale = Math.min(2.5, globalZoomScale + 0.15);
             updateCirclesLayout();
         });
         document.getElementById('btn-zoom-out').addEventListener('click', () => {
@@ -301,7 +455,7 @@
             gameLevel = selectedLevel;
             document.getElementById('btn-level-1').disabled = true;
             document.getElementById('btn-level-2').disabled = true;
-            statusText.innerText = `⚡ 正在啟動鏡頭與音樂合成器，切換至 Level ${gameLevel}...`;
+            statusText.innerText = `⚡ 正在啟動高清光感鏡頭與音訊引擎...`;
             try {
                 initAudio();
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -320,13 +474,15 @@
                 canvas.height = video.videoHeight;
                 updateCirclesLayout();
                 generateNewChallenge();
+                
                 poseDetection.createDetector(
                     poseDetection.SupportedModels.BlazePose, { runtime: 'tfjs', enableSmoothing: true, modelType: 'full' }
-                ).then(d => { detector = d; }).catch(e => console.log("像素感應引擎全速就緒"));
+                ).then(d => { detector = d; }).catch(e => console.log("感應引擎就緒"));
+                
                 requestAnimationFrame(renderLoop);
                 setInterval(runAIInBackground, 100); 
 
-            } catch (err) { alert('鏡頭權限錯誤。'); }
+            } catch (err) { alert('鏡頭授權失敗，請確認隱私權設定。'); }
         }
 
         async function runAIInBackground() {
@@ -351,7 +507,7 @@
 
             const currentFrameData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             let motionCounter = new Array(8).fill(0);
-
+            
             if (lastFrameData) {
                 for (let y = 0; y < canvas.height; y += 4) {
                     for (let x = 0; x < canvas.width; x += 4) {
@@ -378,27 +534,30 @@
             lastFrameData = currentFrameData;
 
             for (let i = 0; i < 8; i++) {
-                const isValidTrigger = (gameLevel === 1 && i === currentTargetZoneLvl1) ||
-                    (gameLevel === 2 && !circlesConfig[i].isCleared);
+                const isValidTrigger = (gameLevel === 1 && i === currentTargetZoneLvl1) || (gameLevel === 2 && !circlesConfig[i].isCleared);
                 if (isValidTrigger && motionCounter[i] > 10) {
                     activeTimers[i] = now + HOLD_DURATION;
                 }
             }
 
+            // 3. 人類手腳 AI 追蹤點 (細緻白圓搭配微邊框)
             if (latestPoses && latestPoses.length > 0) {
                 const pointsToDraw = [11, 12, 15, 16, 23, 24, 27, 28];
                 pointsToDraw.forEach(index => {
                     const kp = latestPoses[index];
                     if (kp && kp.score > 0.4) {
                         ctx.beginPath();
-                        ctx.arc(kp.x, kp.y, 13, 0, 2 * Math.PI);
-                        ctx.strokeStyle = (index === 15 || index === 16) ? '#ff6600' : '#00f0ff'; 
-                        ctx.lineWidth = 4;
+                        ctx.arc(kp.x, kp.y, 10, 0, 2 * Math.PI);
+                        ctx.strokeStyle = (index === 15 || index === 16) ? '#ff453a' : '#0071e3'; 
+                        ctx.lineWidth = 3;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fill();
                         ctx.stroke();
                     }
                 });
             }
 
+            // 4. 渲染 8 圓形與關卡邏輯判定 (完全剔除外框與背景，僅保留 Level 2 擊破時的柔和色調提示)
             circlesConfig.forEach((circle, i) => {
                 let isTargetToShow = false;
                 if (gameLevel === 1 && circle.id === currentTargetZoneLvl1) isTargetToShow = true;
@@ -410,10 +569,10 @@
 
                     ctx.save();
                     if (isHit) {
-                        // Level 2 擊破效果：保留淡淡的黃金命中光暈提示
+                        // Level 2 擊破效果：柔和優雅的琥珀金命中光暈提示
                         ctx.beginPath();
-                        ctx.arc(circle.x, circle.y, circle.radius * 1.06, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'rgba(255, 221, 0, 0.4)';
+                        ctx.arc(circle.x, circle.y, circle.radius * 1.02, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(255, 214, 10, 0.4)';
                         ctx.fill();
                     } else {
                         if (now < activeTimers[circle.id]) {
@@ -422,8 +581,8 @@
                                 scoreVal.innerText = score;
                                 playArcadeLaser(baseFrequencies[circle.id], true);
                                 centerTaskText = "🌟 完美擊中！";
-                                centerTextColor = "#00ff66";
-                                centerTextScale = 1.5;
+                                centerTextColor = "#34c759";
+                                centerTextScale = 1.2;
                                 currentTargetZoneLvl1 = -1;
                                 setTimeout(generateNewChallenge, 800);
                             } else {
@@ -433,20 +592,21 @@
                                     scoreVal.innerText = score;
                                     playArcadeLaser(baseFrequencies[circle.id], true);
                                     centerTaskText = `🌟 完美擊中：${nextExpectedNumber}！`;
-                                    centerTextColor = "#00ff66";
-                                    centerTextScale = 1.5;
+                                    centerTextColor = "#34c759";
+                                    centerTextScale = 1.2;
                                     nextExpectedNumber++;
+                                    
                                     if (nextExpectedNumber > 8) {
                                         nextExpectedNumber = 1;
-                                        centerTaskText = "🔥 1-8 全連擊清場爆裂！ 🔥";
+                                        centerTaskText = "🔥 完美連擊清場！";
                                         setTimeout(generateNewChallenge, 800); 
                                     } else {
                                         setTimeout(() => {
-                                            centerTaskText = `🔍 請尋找數字：${nextExpectedNumber}`;
-                                            centerTextColor = "#ffff00";
+                                            centerTaskText = `請尋找數字：${nextExpectedNumber}`;
+                                            centerTextColor = "#bf5af2";
                                             centerTextScale = 1.0;
                                             nextTaskTimestamp = Date.now() + targetLifeTime;
-                                      }, 400);
+                                        }, 400);
                                     }
                                 } else {
                                     if (!zoneStates[circle.id]) {
@@ -459,17 +619,15 @@
                             zoneStates[circle.id] = false;
                         }
 
-                        // 💡 【核心修改】這裡完全不呼叫 ctx.fill() 和 ctx.stroke()！
-                        // 圓圈的外框和背景顏色直接「不畫出來」，達成「唔駛包住個球」的純淨視覺。
+                        // 【核心修改】不調用外框或背景填充，維持純淨球體視覺
                     }
 
                     ctx.translate(circle.x, circle.y);
                     ctx.scale(-1, 1);
                     ctx.fillStyle = '#ffffff'; 
                     
-                    // 大幅放大 Level 1 的球體 Emoji 尺寸（基礎設定為 55 像素，再乘上放大率）
                     const ballFontSize = Math.round(55 * globalZoomScale);
-                    const numFontSize = Math.round(34 * globalZoomScale);
+                    const numFontSize = Math.round(32 * globalZoomScale);
                     const subFontSize = Math.round(10 * globalZoomScale);
 
                     ctx.textAlign = 'center';
@@ -480,13 +638,12 @@
                         const ballIcons = ["🏀", "🏀", "🏀", "🏐", "🏐", "⚽", "⚽", "⚽"];
                         ctx.fillText(ballIcons[circle.id], 0, 0);
                     } else if (gameLevel === 2 && !circle.isCleared) {
-                        // Level 2 保留數字顯示供順序流訓練
-                        ctx.font = `bold ${numFontSize}px system-ui, sans-serif`;
-                        ctx.fillStyle = isVisuallyActive ? '#00ff66' : '#ffffff';
-                        ctx.fillText(circle.number, 0, -3 * globalZoomScale);
-                        ctx.font = `bold ${subFontSize}px system-ui`;
-                        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                        ctx.fillText(circle.labelName, 0, 20 * globalZoomScale);
+                        ctx.font = `600 ${numFontSize}px -apple-system, sans-serif`;
+                        ctx.fillStyle = isVisuallyActive ? '#34c759' : '#ffffff';
+                        ctx.fillText(circle.number, 0, -5 * globalZoomScale);
+                        ctx.font = `500 ${subFontSize}px -apple-system`;
+                        ctx.fillStyle = isVisuallyActive ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
+                        ctx.fillText(circle.labelName, 0, 18 * globalZoomScale);
                     }
                     ctx.restore();
                 } else {
@@ -494,19 +651,19 @@
                 }
             });
 
-            // 5. 中央提示字體
+            // 5. 中央高階動態提示文字
             ctx.save();
             ctx.translate(canvas.width * 0.5, canvas.height * 0.5);
             ctx.scale(-1 * centerTextScale, 1 * centerTextScale);
 
             ctx.fillStyle = centerTextColor;
-            const centerFontSize = Math.round(36 * globalZoomScale);
-            ctx.font = `bold ${centerFontSize}px Arial Black, system-ui, sans-serif`;
+            const centerFontSize = Math.round(30 * globalZoomScale);
+            ctx.font = `600 ${centerFontSize}px -apple-system, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-            ctx.lineWidth = Math.round(8 * globalZoomScale);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.lineWidth = Math.round(6 * globalZoomScale);
             ctx.strokeText(centerTaskText, 0, 0);
             ctx.fillText(centerTaskText, 0, 0);
             ctx.restore();
